@@ -1,0 +1,219 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="100%" height="100%">
+  <!-- Transparent / Pure White Background -->
+  <rect width="1000" height="1000" fill="#FFFFFF" />
+
+  <!-- ========================================== -->
+  <!-- 1. YELLOW ARC & SPOON (Top, Clockwise)    -->
+  <!-- ========================================== -->
+  <!-- Yellow Arc from ~9 o'clock (x:130, y:590) to ~2 o'clock (x:720, y:230) -->
+  <path
+    d="M 125 580
+       A 390 390 0 1 1 735 240"
+    fill="none"
+    stroke="#FFCD00"
+    stroke-width="25"
+    stroke-linecap="round"
+  />
+
+  <!-- Spoon Handle & Head at Top-Right (~2 o'clock) -->
+  <g transform="translate(735, 235) rotate(42)">
+    <!-- Spoon transition neck -->
+    <path
+      d="M -12 0 
+         C -8 -20 5 -40 16 -60 
+         L 32 -52 
+         C 18 -32 8 -12 12 6 Z"
+      fill="#FFCD00"
+    />
+    <!-- Spoon Oval Head -->
+    <ellipse
+      cx="45"
+      cy="-115"
+      rx="58"
+      ry="105"
+      transform="rotate(8 45 -115)"
+      fill="#FFCD00"
+    />
+  </g>
+
+  <!-- ========================================== -->
+  <!-- 2. RED ARC & FORK (Bottom, Clockwise)     -->
+  <!-- ========================================== -->
+  <!-- Red Arc from ~3 o'clock (x:885, y:450) to ~8 o'clock (x:265, y:840) -->
+  <path
+    d="M 885 450
+       A 390 390 0 0 1 265 845"
+    fill="none"
+    stroke="#E60000"
+    stroke-width="25"
+    stroke-linecap="round"
+  />
+
+  <!-- Fork at Bottom-Left (~8 o'clock) -->
+  <!-- Angled along the tangency towards the lower-left -->
+  <g transform="translate(265, 845) rotate(135)">
+    <!-- Fork base bridge and shaft -->
+    <path
+      d="M -14 0 
+         C -12 25 -10 50 -18 70 
+         C -24 85 -36 95 -48 100
+         L 48 100
+         C 36 95 24 85 18 70
+         C 10 50 12 25 14 0 Z"
+      fill="#E60000"
+    />
+    <!-- Fork Crown / Bridge -->
+    <rect x="-48" y="95" width="96" height="24" rx="4" fill="#E60000" />
+    <!-- 4 Tines -->
+    <!-- Tine 1 (Left outer) -->
+    <rect x="-48" y="115" width="13" height="95" rx="6" fill="#E60000" />
+    <!-- Tine 2 (Left inner) -->
+    <rect x="-21" y="115" width="13" height="100" rx="6" fill="#E60000" />
+    <!-- Tine 3 (Right inner) -->
+    <rect x="8" y="115" width="13" height="100" rx="6" fill="#E60000" />
+    <!-- Tine 4 (Right outer) -->
+    <rect x="35" y="115" width="13" height="95" rx="6" fill="#E60000" />
+  </g>
+
+  <!-- ========================================== -->
+  <!-- 3. CHEF'S HAT (Green Line-Art Outline)    -->
+  <!-- ========================================== -->
+  <g fill="none" stroke="#00882B" stroke-width="11" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Main Outline of the Toque -->
+    <path
+      d="M 395 350
+         C 390 320 385 275 440 255
+         C 435 245 425 210 475 220
+         C 505 225 530 235 570 240
+         C 580 242 610 246 640 270
+         C 675 298 678 355 640 375
+         C 620 385 595 380 605 410
+         C 610 425 610 440 605 450
+         M 390 350
+         C 390 365 410 380 445 370
+         C 455 370 460 405 460 435
+         M 460 435
+         C 480 460 560 475 605 450"
+    />
+    <!-- Inner bottom opening ellipse curve -->
+    <path
+      d="M 460 430
+         C 480 400 580 400 605 435"
+      stroke-width="8"
+    />
+  </g>
+
+  <!-- ========================================== -->
+  <!-- 4. "AKF" SERIF LETTERS (Rich Green)       -->
+  <!-- ========================================== -->
+  <g fill="#00882B">
+    <!-- Letter A -->
+    <path
+      d="M 245 705 
+         L 310 705 
+         L 310 690 
+         L 290 690 
+         L 348 510 
+         L 380 510 
+         L 435 690 
+         L 415 690 
+         L 415 705 
+         L 475 705 
+         L 475 690 
+         L 452 690 
+         L 438 642 
+         L 332 642 
+         L 318 690 
+         L 295 690 
+         L 295 705 Z
+         M 340 615 
+         L 428 615 
+         L 384 485 Z"
+    />
+
+    <!-- Letter K (With distinctive flared swash leg) -->
+    <path
+      d="M 450 705 
+         L 545 705 
+         L 545 690 
+         L 512 690 
+         L 512 505 
+         L 545 505 
+         L 545 490 
+         L 450 490 
+         L 450 505 
+         L 482 505 
+         L 482 690 
+         L 450 690 Z"
+    />
+    <!-- K upper diagonal -->
+    <path
+      d="M 512 605 
+         L 600 505 
+         L 580 505 
+         L 580 490 
+         L 645 490 
+         L 645 505 
+         L 622 505 
+         L 542 590 Z"
+    />
+    <!-- K lower swooping flared leg -->
+    <path
+      d="M 535 580 
+         C 555 605 570 635 585 665 
+         C 595 685 615 705 658 705 
+         L 658 695 
+         C 630 695 612 680 598 650 
+         C 582 615 565 585 545 565 Z"
+    />
+
+    <!-- Letter F -->
+    <path
+      d="M 660 705 
+         L 755 705 
+         L 755 690 
+         L 722 690 
+         L 722 505 
+         L 755 505 
+         L 755 490 
+         L 660 490 
+         L 660 505 
+         L 692 505 
+         L 692 690 
+         L 660 690 Z"
+    />
+    <!-- F top bar -->
+    <path
+      d="M 722 510 
+         L 810 510 
+         C 818 510 822 522 822 545 
+         L 832 545 
+         L 832 490 
+         L 712 490 
+         L 712 510 Z"
+    />
+    <!-- F middle bar -->
+    <path
+      d="M 722 595 
+         L 785 595 
+         C 792 595 798 605 800 620 
+         L 810 620 
+         L 810 580 
+         L 722 580 Z"
+    />
+  </g>
+
+  <!-- ========================================== -->
+  <!-- 5. "ALL KOFF'S FOOD" (Bold Black Text)     -->
+  <!-- ========================================== -->
+  <text
+    x="535"
+    y="785"
+    font-family="Arial, 'Plus Jakarta Sans', Helvetica, sans-serif"
+    font-size="44"
+    font-weight="900"
+    letter-spacing="2.5"
+    text-anchor="middle"
+    fill="#000000"
+  >ALL KOFF’S FOOD</text>
+</svg>

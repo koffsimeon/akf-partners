@@ -1,0 +1,6 @@
+{
+  "name": "AKF PARTNERS",
+  "description": "Interface interne de pilotage du programme AKF Partners - Gestion des partenaires, clients, commandes, paiements, commissions et diagnostic.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

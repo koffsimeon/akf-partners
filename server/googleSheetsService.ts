@@ -20,158 +20,26 @@ import {
   SystemConfig,
   SystemLog,
   WaveConfig,
-} from '../src/types';
-import { getRankProgression, isCommissionAcquiredOrderStatus } from '../src/engine/akfEngine';
+} from "../src/types";
+import { getRankProgression, isCommissionAcquiredOrderStatus } from "../src/engine/akfEngine";
+import { GoogleSheetsWriter } from "./googleSheetsWriter";
+import { GoogleSheetsMappers } from "./googleSheetsMappers";
+import {
+  EXPECTED_SHEETS_CONFIG,
+  normalizeHeader,
+  formatPhoneForSheets,
+  cleanPhoneFromSheets,
+} from "./googleSheetsConfig";
 
-export const EXPECTED_SHEETS_CONFIG: Record<string, string[]> = {
-  PARTENAIRES: [
-    'ID Partenaire',
-    'Nom& Prénom',
-    'Téléphone',
-    'WhatsApp',
-    "Date d'intégration",
-    'Grade',
-    'Code Partenaire',
-    'Statut',
-    'Clients apportés',
-    'COMMANDES',
-    'CA Généré',
-    'Commission Cumulé',
-    'Commission Payée',
-    'Solde commission',
-    'COMMISSION ANNULÉE',
-    'Prochain Grade',
-    'Progression / Alerte',
-  ],
-  Clients: [
-    'ID CLIENT',
-    'NOM CLIENT',
-    'TÉLÉPHONE',
-    'WHATSAPP',
-    'DATE PREMIÈRE COMMANDE',
-    'ID PARTENAIRE',
-    'CODE PARTENAIRE',
-    'TYPE CLIENT',
-    'FICHE CLIENT',
-    'COMMANDES PREMIUM',
-    'COMMISSIONS PREMIUM',
-    'DERNIÈRE COMMANDE',
-    'STATUT CLIENT',
-    'OBSERVATION',
-  ],
-  Commandes: [
-    'ID COMMANDE',
-    'DATE',
-    'CLIENT',
-    'TÉLÉPHONE CLIENT',
-    'ID PARTENAIRE',
-    'CODE PARTENAIRE',
-    'PRODUIT',
-    'CATÉGORIE PRODUIT',
-    'QUANTITÉ',
-    'PRIX UNITAIRE',
-    'MONTANT COMMANDE',
-    'STATUT COMMANDE',
-    'COMMISSION',
-    'STATUT COMMISSION',
-    'DATE PAIEMENT COMMISSION',
-    'OBSERVATION',
-    'GRADE PARTENAIRE',
-    'MODE DE PAIEMENT',
-    'ID CLIENT',
-    'RANG PREMIUM',
-    'DATE ANNULATION',
-    'ID PAIEMENT COMMISSION',
-    'MONTANT DÉJÀ PAYÉ',
-  ],
-  GRILLE_COMMISSION: [
-    'PRODUIT',
-    'PRIX DE VENTE',
-    'COMMISSION NEO',
-    'COMMISSION AMBASSADOR',
-    'COMMISSION EXCELLENCE',
-    'COMMISSION SIGNATURE',
-    'TYPE DE COMMISSION',
-    'CONDITIONS/NOTES',
-    'CATÉGORIE',
-  ],
-  PAIEMENTS: [
-    'ID PAIEMENT',
-    'DATE PAIEMENT',
-    'ID PARTENAIRE',
-    'CODE PARTENAIRE',
-    'MONTANT PAYÉ',
-    'OBSERVATION',
-  ],
-  CONFIG_ADMIN: [
-    'Email',
-  ],
-  CONFIG_GRADES: [
-    'Vague',
-    'Ambassador_Cmd',
-    'Ambassador_CA',
-    'Excellence_Cmd',
-    'Excellence_CA',
-    'Signature_Cmd',
-    'Signature_CA',
-    'Active',
-  ],
-  SYSTEM_LOGS: [
-    'Date',
-    'Utilisateur',
-    "Type d'Action",
-    'Description',
-    'Ancienne Valeur',
-    'Nouvelle Valeur',
-  ],
-  '📱 MOBILE': [
-    'PANNEAU DE COMMANDE | COCHER POUR LANCER',
-    'Initialiser le système',
-    'Recalculer tout',
-    'ID | Grade actuel | Grade à valider | Commandes | CA | Confirmation',
-  ],
+export {
+  EXPECTED_SHEETS_CONFIG,
+  normalizeHeader,
+  formatPhoneForSheets,
+  cleanPhoneFromSheets,
 };
 
-// Normalisation des en-têtes (insensible à la casse, espaces multiples, accents)
-export function normalizeHeader(h: any): string {
-  if (h === null || h === undefined) return '';
-  return String(h)
-    .trim()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/\s+/g, ' ')
-    .toLowerCase();
-}
-
 /**
- * Formate un numéro de téléphone pour l'enregistrement sécurisé dans Google Sheets (USER_ENTERED).
- * Préfixe par une apostrophe pour forcer Google Sheets à traiter la valeur comme chaîne texte brute
- * et empêcher toute évaluation en formule ou syntax error (ex: '+229...').
- */
-export function formatPhoneForSheets(phone: any): string {
-  if (phone === null || phone === undefined) return '';
-  const trimmed = String(phone).trim();
-  if (!trimmed) return '';
-  if (trimmed.startsWith("'")) return trimmed;
-  return `'${trimmed}`;
-}
-
-/**
- * Nettoie un numéro de téléphone relu depuis Google Sheets en retirant l'apostrophe de forçage texte éventuelle.
- */
-export function cleanPhoneFromSheets(phone: any): string {
-  if (phone === null || phone === undefined) return '';
-  let str = String(phone).trim();
-  if (str.startsWith("'")) {
-    str = str.slice(1).trim();
-  }
-  return str;
-}
-
-/**
- * Validation de la structure spéciale officielle de l'onglet '📱 MOBILE'
- * 
- * L'onglet '📱 MOBILE' est un panneau de commande interactif Apps Script (structure non-tabulaire).
+ * Validation de la structure spéciale de l'onglet MOBILE
  * Il ne doit PAS être validé comme une feuille tabulaire classique de 10 colonnes.
  * 
  * Structure officielle attendue :
@@ -671,549 +539,63 @@ export class GoogleSheetsService {
     };
   }
 
-  /**
-   * Mapping de l'onglet PARTENAIRES
-   */
+  // --- DÉLÉGATION MAPPING AU MODULE GoogleSheetsMappers ---
+
   public static mapPartners(rows: any[][]): Partner[] {
-    if (rows.length < 2) return [];
-    const headerRow = rows[0];
-    const colIdx = this.buildColumnIndexMap(headerRow);
-
-    const partners: Partner[] = [];
-
-    for (let r = 1; r < rows.length; r++) {
-      const row = rows[r];
-      const id = String(this.getCell(row, colIdx, 'ID Partenaire') || '').trim();
-      if (!id) continue;
-
-      const code = String(this.getCell(row, colIdx, 'Code Partenaire') || id).trim();
-      const fullName = String(this.getCell(row, colIdx, 'Nom& Prénom') || '').trim();
-      const phone = cleanPhoneFromSheets(this.getCell(row, colIdx, 'Téléphone'));
-      const whatsapp = cleanPhoneFromSheets(this.getCell(row, colIdx, 'WhatsApp')) || undefined;
-      const createdAt = parseCleanDate(this.getCell(row, colIdx, "Date d'intégration"));
-      const rankRaw = String(this.getCell(row, colIdx, 'Grade') || 'Neo').trim();
-      const rank = (['Neo', 'Ambassador', 'Excellence', 'Signature'].includes(rankRaw)
-        ? rankRaw
-        : 'Neo') as Partner['rank'];
-      const statusRaw = String(this.getCell(row, colIdx, 'Statut') || 'Actif').trim();
-      const status = statusRaw.toLowerCase().includes('inactif') ? 'Inactif' : 'Actif';
-
-      const clientCount = parseCleanNumber(this.getCell(row, colIdx, 'Clients apportés'));
-      const orderCount = parseCleanNumber(this.getCell(row, colIdx, 'COMMANDES'));
-      const ca = parseCleanNumber(this.getCell(row, colIdx, 'CA Généré'));
-      const totalCommission = parseCleanNumber(this.getCell(row, colIdx, 'Commission Cumulé'));
-      const paidCommission = parseCleanNumber(this.getCell(row, colIdx, 'Commission Payée'));
-      const balance = parseCleanNumber(this.getCell(row, colIdx, 'Solde commission'));
-      const nextRankRaw = String(this.getCell(row, colIdx, 'Prochain Grade') || '').trim();
-      const nextRank = (['Ambassador', 'Excellence', 'Signature'].includes(nextRankRaw)
-        ? nextRankRaw
-        : null) as Partner['nextRank'];
-
-      // Canonical phone
-      const phoneCanonical = phone.replace(/\D/g, '');
-
-      partners.push({
-        id,
-        code,
-        fullName: fullName || id,
-        phone,
-        phoneCanonical,
-        whatsapp,
-        rank,
-        wave: 'Vague 1',
-        status,
-        createdAt,
-        ca,
-        clientCount,
-        orderCount,
-        totalCommission,
-        validatedCommission: totalCommission, // Dans le tableau, solde = cumulé - payé
-        paidCommission,
-        balance,
-        progressPct: 0,
-        nextRank,
-        targetCaNextRank: 0,
-        targetCmdNextRank: 0,
-      });
-    }
-
-    return partners;
+    return GoogleSheetsMappers.mapPartners(rows);
   }
 
-  /**
-   * Mapping de l'onglet Clients
-   */
   public static mapClients(rows: any[][]): Client[] {
-    if (rows.length < 2) return [];
-    const headerRow = rows[0];
-    const colIdx = this.buildColumnIndexMap(headerRow);
-
-    const clients: Client[] = [];
-
-    for (let r = 1; r < rows.length; r++) {
-      const row = rows[r];
-      const id = String(this.getCell(row, colIdx, 'ID CLIENT') || '').trim();
-      if (!id) continue;
-
-      const fullName = String(this.getCell(row, colIdx, 'NOM CLIENT') || '').trim();
-      const phone = cleanPhoneFromSheets(this.getCell(row, colIdx, 'TÉLÉPHONE'));
-      const whatsapp = cleanPhoneFromSheets(this.getCell(row, colIdx, 'WHATSAPP')) || undefined;
-      const partnerId = String(this.getCell(row, colIdx, 'ID PARTENAIRE') || '').trim() || null;
-      const partnerCode = String(this.getCell(row, colIdx, 'CODE PARTENAIRE') || '').trim() || null;
-      const typeClientRaw = String(this.getCell(row, colIdx, 'TYPE CLIENT') || '').trim();
-      const clientType = typeClientRaw.toUpperCase().includes('PARTENAIRE') || partnerId
-        ? 'PARTENAIRE'
-        : 'DIRECT AKF';
-
-      const createdAt = parseCleanDate(this.getCell(row, colIdx, 'DATE PREMIÈRE COMMANDE'));
-      const lastOrderDate = parseCleanDate(this.getCell(row, colIdx, 'DERNIÈRE COMMANDE'));
-      const phoneCanonical = phone.replace(/\D/g, '');
-
-      clients.push({
-        id,
-        fullName: fullName || id,
-        phone,
-        phoneCanonical,
-        whatsapp,
-        partnerId,
-        partnerCode,
-        partnerName: null,
-        clientType,
-        orderCount: 0,
-        totalCa: 0,
-        lastOrderDate,
-        createdAt,
-      });
-    }
-
-    return clients;
+    return GoogleSheetsMappers.mapClients(rows);
   }
 
-  /**
-   * Mapping de l'onglet Commandes
-   */
   public static mapOrders(rows: any[][]): Order[] {
-    if (rows.length < 2) return [];
-    const headerRow = rows[0];
-    const colIdx = this.buildColumnIndexMap(headerRow);
-
-    const orders: Order[] = [];
-
-    for (let r = 1; r < rows.length; r++) {
-      const row = rows[r];
-      const id = String(this.getCell(row, colIdx, 'ID COMMANDE') || '').trim();
-      if (!id) continue;
-
-      const date = parseCleanDate(this.getCell(row, colIdx, 'DATE'));
-      const clientName = String(
-        this.getCell(row, colIdx, 'CLIENT') ||
-        this.getCell(row, colIdx, 'NOM CLIENT') ||
-        this.getCell(row, colIdx, 'Nom Client') ||
-        this.getCell(row, colIdx, 'Client') ||
-        ''
-      ).trim();
-      const clientId = String(
-        this.getCell(row, colIdx, 'ID CLIENT') ||
-        this.getCell(row, colIdx, 'ID Client') ||
-        this.getCell(row, colIdx, 'CODE CLIENT') ||
-        this.getCell(row, colIdx, 'Code Client') ||
-        this.getCell(row, colIdx, 'ID_CLIENT') ||
-        ''
-      ).trim();
-      const partnerId = String(this.getCell(row, colIdx, 'ID PARTENAIRE') || '').trim() || null;
-      const partnerCode = String(this.getCell(row, colIdx, 'CODE PARTENAIRE') || '').trim() || null;
-      const partnerRankAtOrder = (this.getCell(row, colIdx, 'GRADE PARTENAIRE') as any) || null;
-      const productName = String(this.getCell(row, colIdx, 'PRODUIT') || '').trim();
-      const categoryRaw = String(
-        this.getCell(row, colIdx, 'CATÉGORIE PRODUIT') ||
-        this.getCell(row, colIdx, 'CATÉGORIE') ||
-        ''
-      ).trim().toUpperCase();
-      let category: 'PREMIUM' | 'RÉCURRENT' = 'RÉCURRENT';
-      if (categoryRaw === 'PREMIUM' || categoryRaw.startsWith('PREM')) {
-        category = 'PREMIUM';
-      } else {
-        category = 'RÉCURRENT';
-      }
-      const quantity = Math.max(1, parseCleanNumber(this.getCell(row, colIdx, 'QUANTITÉ'), 1));
-      const unitPrice = parseCleanNumber(this.getCell(row, colIdx, 'PRIX UNITAIRE'));
-      const totalAmount = parseCleanNumber(this.getCell(row, colIdx, 'MONTANT COMMANDE'), unitPrice * quantity);
-      const orderStatus = String(this.getCell(row, colIdx, 'STATUT COMMANDE') || 'Confirmée').trim() as any;
-      const rawCommissionAmount = parseCleanNumber(this.getCell(row, colIdx, 'COMMISSION'));
-      const rawCommissionStatus = String(this.getCell(row, colIdx, 'STATUT COMMISSION') || 'En attente').trim() as any;
-
-      // RÈGLE D'OR AKF :
-      // "En attente" -> 0 commission acquise
-      // "Confirmée" -> 0 commission acquise
-      // "Terminée" -> calcul et comptabilisation de la commission
-      // "Annulée" -> 0 commission
-      const isCompleted = isCommissionAcquiredOrderStatus(orderStatus);
-      let commissionAmount = 0;
-      let commissionStatus: CommissionStatus = 'En attente';
-
-      if (orderStatus === 'Annulée') {
-        commissionAmount = 0;
-        commissionStatus = 'Annulée';
-      } else if (isCompleted) {
-        commissionAmount = rawCommissionAmount;
-        commissionStatus = rawCommissionStatus === 'Payée' ? 'Payée' : (rawCommissionAmount > 0 ? 'Validée' : 'Non éligible');
-      } else {
-        // En attente ou Confirmée : 0 commission acquise
-        commissionAmount = 0;
-        commissionStatus = 'En attente';
-      }
-
-      const isPremium = category === 'PREMIUM';
-      const premiumRankRaw = this.getCell(row, colIdx, 'RANG PREMIUM');
-      const premiumRankForClient = premiumRankRaw ? parseInt(String(premiumRankRaw), 10) : null;
-
-      orders.push({
-        id,
-        date,
-        clientId: clientId || 'CL000',
-        clientName: clientName || clientId,
-        partnerId,
-        partnerCode,
-        partnerName: null,
-        partnerRankAtOrder,
-        productId: 'PRD-' + productName.slice(0, 8),
-        productName: productName || 'Produit AKF',
-        quantity,
-        unitPrice,
-        totalAmount,
-        isPremium,
-        premiumRankForClient,
-        commissionRate: totalAmount > 0 ? commissionAmount / totalAmount : 0,
-        commissionAmount,
-        orderStatus,
-        commissionStatus,
-        createdAt: date,
-      });
-    }
-
-    return orders;
+    return GoogleSheetsMappers.mapOrders(rows);
   }
 
-  /**
-   * Mapping de l'onglet PAIEMENTS
-   */
   public static mapPayments(rows: any[][]): Payment[] {
-    if (rows.length < 2) return [];
-    const headerRow = rows[0];
-    const colIdx = this.buildColumnIndexMap(headerRow);
-
-    const payments: Payment[] = [];
-
-    for (let r = 1; r < rows.length; r++) {
-      const row = rows[r];
-      const id = String(this.getCell(row, colIdx, 'ID PAIEMENT') || '').trim();
-      if (!id) continue;
-
-      const date = parseCleanDate(this.getCell(row, colIdx, 'DATE PAIEMENT'));
-      const partnerId = String(this.getCell(row, colIdx, 'ID PARTENAIRE') || '').trim();
-      const partnerCode = String(this.getCell(row, colIdx, 'CODE PARTENAIRE') || partnerId).trim();
-      const amount = parseCleanNumber(this.getCell(row, colIdx, 'MONTANT PAYÉ'));
-      const note = String(this.getCell(row, colIdx, 'OBSERVATION') || '').trim();
-
-      payments.push({
-        id,
-        partnerId,
-        partnerCode,
-        partnerName: partnerCode,
-        date,
-        amount,
-        paymentMethod: 'Mobile Money (MTN / Moov)',
-        reference: id,
-        note,
-        status: 'Effectué',
-        createdAt: date,
-      });
-    }
-
-    return payments;
+    return GoogleSheetsMappers.mapPayments(rows);
   }
 
-  /**
-   * Mapping de l'onglet GRILLE_COMMISSION
-   */
   public static mapProducts(rows: any[][]): Product[] {
-    if (rows.length < 2) return [];
-    const headerRow = rows[0];
-    const colIdx = this.buildColumnIndexMap(headerRow);
-
-    const products: Product[] = [];
-
-    for (let r = 1; r < rows.length; r++) {
-      const row = rows[r];
-      const name = String(this.getCell(row, colIdx, 'PRODUIT') || '').trim();
-      if (!name) continue;
-
-      const rawPrice =
-        this.getCell(row, colIdx, 'PRIX DE VENTE') ??
-        this.getCell(row, colIdx, 'PRIX UNITAIRE') ??
-        this.getCell(row, colIdx, 'PRIX') ??
-        this.getCell(row, colIdx, 'PRIX VENTE') ??
-        this.getCell(row, colIdx, 'TARIF');
-      const price = parseCleanNumber(rawPrice);
-
-      const commissionNeo = parseCleanNumber(
-        this.getCell(row, colIdx, 'COMMISSION NEO') ??
-        this.getCell(row, colIdx, 'NEO')
-      );
-      const commissionAmbassador = parseCleanNumber(
-        this.getCell(row, colIdx, 'COMMISSION AMBASSADOR') ??
-        this.getCell(row, colIdx, 'AMBASSADOR')
-      );
-      const commissionExcellence = parseCleanNumber(
-        this.getCell(row, colIdx, 'COMMISSION EXCELLENCE') ??
-        this.getCell(row, colIdx, 'EXCELLENCE')
-      );
-      const commissionSignature = parseCleanNumber(
-        this.getCell(row, colIdx, 'COMMISSION SIGNATURE') ??
-        this.getCell(row, colIdx, 'SIGNATURE')
-      );
-      const rawCommissionType = String(
-        this.getCell(row, colIdx, 'TYPE DE COMMISSION') ??
-        this.getCell(row, colIdx, 'TYPE COMMISSION') ??
-        this.getCell(row, colIdx, 'TYPE') ??
-        ''
-      ).trim();
-      const commissionType = rawCommissionType.toLowerCase().includes('forfait') ? 'Forfaitaire' : 'Pourcentage';
-      const conditions = String(
-        this.getCell(row, colIdx, 'CONDITIONS/NOTES') ??
-        this.getCell(row, colIdx, 'CONDITIONS') ??
-        this.getCell(row, colIdx, 'NOTES') ??
-        ''
-      ).trim();
-      const rawCategory = String(
-        this.getCell(row, colIdx, 'CATÉGORIE') ??
-        this.getCell(row, colIdx, 'CATEGORIE') ??
-        ''
-      ).trim().toUpperCase();
-      let category: 'PREMIUM' | 'RÉCURRENT' = 'RÉCURRENT';
-      if (rawCategory === 'PREMIUM' || rawCategory.startsWith('PREM')) {
-        category = 'PREMIUM';
-      } else {
-        category = 'RÉCURRENT';
-      }
-      const isPremium = category === 'PREMIUM';
-
-      products.push({
-        id: `PRD${String(r).padStart(3, '0')}`,
-        name,
-        price,
-        isPremium,
-        category,
-        commissionNeo,
-        commissionAmbassador,
-        commissionExcellence,
-        commissionSignature,
-        commissionType,
-        conditions,
-      });
-    }
-
-    return products;
+    return GoogleSheetsMappers.mapProducts(rows);
   }
 
-  /**
-   * Mapping de l'onglet CONFIG_GRADES
-   */
   public static mapGrades(rows: any[][]): WaveConfig[] {
-    if (rows.length < 2) return [];
-    const headerRow = rows[0];
-    const colIdx = this.buildColumnIndexMap(headerRow);
-
-    const waves: WaveConfig[] = [];
-
-    for (let r = 1; r < rows.length; r++) {
-      const row = rows[r];
-      const wave = String(this.getCell(row, colIdx, 'Vague') || `Vague ${r}`).trim();
-      if (!wave) continue;
-
-      // Seuils officiels AKF :
-      // Ambassador : 8 commandes ET 100 000 FCFA
-      // Excellence : 20 commandes ET 300 000 FCFA
-      // Signature : 50 commandes ET 800 000 FCFA
-      const ambassadorCmd = parseCleanNumber(this.getCell(row, colIdx, 'Ambassador_Cmd'), 8);
-      const ambassadorCa = parseCleanNumber(this.getCell(row, colIdx, 'Ambassador_CA'), 100000);
-      const excellenceCmd = parseCleanNumber(this.getCell(row, colIdx, 'Excellence_Cmd'), 20);
-      const excellenceCa = parseCleanNumber(this.getCell(row, colIdx, 'Excellence_CA'), 300000);
-      const signatureCmd = parseCleanNumber(this.getCell(row, colIdx, 'Signature_Cmd'), 50);
-      const signatureCa = parseCleanNumber(this.getCell(row, colIdx, 'Signature_CA'), 800000);
-
-      // Prise en charge dynamique de "Active = OUI" (insensible à la casse)
-      const activeRaw = this.getCell(row, colIdx, 'Active');
-      const activeStr = String(activeRaw || '').trim().toUpperCase();
-      const active =
-        activeRaw === true ||
-        activeStr === 'OUI' ||
-        activeStr === 'YES' ||
-        activeStr === 'TRUE' ||
-        activeStr === '1' ||
-        activeStr === 'ACTIF' ||
-        activeStr === 'ACTIVE';
-
-      waves.push({
-        wave,
-        ambassadorCmd,
-        ambassadorCa,
-        excellenceCmd,
-        excellenceCa,
-        signatureCmd,
-        signatureCa,
-        active,
-      });
-    }
-
-    return waves;
+    return GoogleSheetsMappers.mapGrades(rows);
   }
 
-  /**
-   * Mapping de l'onglet SYSTEM_LOGS
-   */
   public static mapLogs(rows: any[][]): SystemLog[] {
-    if (rows.length < 2) return [];
-    const headerRow = rows[0];
-    const colIdx = this.buildColumnIndexMap(headerRow);
-
-    const logs: SystemLog[] = [];
-
-    for (let r = 1; r < rows.length; r++) {
-      const row = rows[r];
-      const date = parseCleanDate(this.getCell(row, colIdx, 'Date'));
-      const user = String(this.getCell(row, colIdx, 'Utilisateur') || 'admin@akfpartners.bj').trim();
-      const actionType = String(this.getCell(row, colIdx, "Type d'Action") || 'SYNC').trim() as any;
-      const description = String(this.getCell(row, colIdx, 'Description') || '').trim();
-      const oldValue = String(this.getCell(row, colIdx, 'Ancienne Valeur') || '').trim();
-      const newValue = String(this.getCell(row, colIdx, 'Nouvelle Valeur') || '').trim();
-
-      logs.push({
-        id: `LOG${String(r).padStart(3, '0')}`,
-        timestamp: date,
-        user,
-        actionType,
-        description,
-        oldValue,
-        newValue,
-      });
-    }
-
-    return logs;
+    return GoogleSheetsMappers.mapLogs(rows);
   }
 
-  // --- ÉCRITURE CONTRÔLÉE NON DESTRUCTIVE (PHASE 4 CONTRÔLÉE) ---
+  // --- DÉLÉGATION ÉCRITURE AU MODULE GoogleSheetsWriter ---
 
-  /**
-   * Écrit dans la première ligne disponible (où la colonne clé ID est vide),
-   * ou ajoute à la fin si toutes les lignes existantes sont occupées.
-   * Évite ainsi d'écrire après des centaines de lignes de formules pré-remplies (ex: ligne 988).
-   */
   public static async insertOrAppendRow(
     spreadsheetId: string,
     accessToken: string,
     sheetTitle: string,
     rowValues: any[],
-    primaryKeyColLetter = 'A'
+    primaryKeyColLetter = "A"
   ): Promise<{ rowIndex: number; updatedRange: string }> {
-    // 1. Lire la colonne clé pour trouver la première ligne où la clé est vide (à partir de la ligne 2)
-    const getUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/'${encodeURIComponent(
-      sheetTitle
-    )}'!${primaryKeyColLetter}:${primaryKeyColLetter}`;
-
-    const getRes = await fetch(getUrl, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-
-    if (!getRes.ok) {
-      const err = await getRes.text();
-      throw new Error(`Impossible de vérifier les lignes disponibles dans "${sheetTitle}" : ${err}`);
-    }
-
-    const sheetData = await getRes.json();
-    const colValues: any[][] = sheetData.values || [];
-
-    // Trouver la première ligne (1-indexed pour Google Sheets, après l'en-tête en ligne 1) avec cellule vide
-    let targetRowIndex = -1;
-    for (let r = 1; r < colValues.length; r++) {
-      const cellVal = colValues[r] && colValues[r][0] !== undefined ? String(colValues[r][0]).trim() : '';
-      if (!cellVal) {
-        targetRowIndex = r + 1; // 1-indexed pour Sheets
-        break;
-      }
-    }
-
-    // Si toutes les lignes existantes ont une valeur, écrire sur la ligne suivante
-    if (targetRowIndex === -1) {
-      targetRowIndex = colValues.length + 1;
-      if (targetRowIndex < 2) targetRowIndex = 2;
-    }
-
-    // 2. Écrire les valeurs sur cette ligne exacte
-    const updateRange = `'${sheetTitle}'!A${targetRowIndex}`;
-    const putUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(
-      updateRange
-    )}?valueInputOption=USER_ENTERED`;
-
-    const putRes = await fetch(putUrl, {
-      method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        range: updateRange,
-        majorDimension: 'ROWS',
-        values: [rowValues],
-      }),
-    });
-
-    if (!putRes.ok) {
-      const err = await putRes.text();
-      throw new Error(`Échec d'écriture dans "${sheetTitle}" à la ligne ${targetRowIndex} : ${err}`);
-    }
-
-    return { rowIndex: targetRowIndex, updatedRange: updateRange };
+    return GoogleSheetsWriter.insertOrAppendRow(
+      spreadsheetId,
+      accessToken,
+      sheetTitle,
+      rowValues,
+      primaryKeyColLetter
+    );
   }
 
-  /**
-   * Ajoute une ligne à la fin d'un onglet sans écraser ni vider l'existant.
-   */
   public static async appendRow(
     spreadsheetId: string,
     accessToken: string,
     sheetTitle: string,
     rowValues: any[]
   ): Promise<any> {
-    const range = `'${sheetTitle}'!A:A`;
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(
-      range
-    )}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        range,
-        majorDimension: 'ROWS',
-        values: [rowValues],
-      }),
-    });
-
-    if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`Échec de l'ajout de ligne dans "${sheetTitle}" : ${err}`);
-    }
-
-    return response.json();
+    return GoogleSheetsWriter.appendRow(spreadsheetId, accessToken, sheetTitle, rowValues);
   }
 
-  /**
-   * Met à jour une ligne ciblée par son identifiant unique.
-   */
   public static async updateRowByPrimaryKey(
     spreadsheetId: string,
     accessToken: string,
@@ -1222,61 +604,16 @@ export class GoogleSheetsService {
     idValue: string,
     rowValues: any[]
   ): Promise<void> {
-    // 1. Lire la colonne d'identifiants
-    const getUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/'${sheetTitle}'!A1:Z`;
-    const getRes = await fetch(getUrl, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    if (!getRes.ok) throw new Error(`Impossible de localiser l'ID ${idValue}`);
-    const sheetData = await getRes.json();
-    const rows: any[][] = sheetData.values || [];
-    if (rows.length === 0) throw new Error(`L'onglet "${sheetTitle}" est vide`);
-
-    const colMap = this.buildColumnIndexMap(rows[0]);
-    const idIdx = colMap[normalizeHeader(idColumnName)];
-    if (idIdx === undefined) throw new Error(`Colonne ID "${idColumnName}" introuvable`);
-
-    let targetRowIndex = -1;
-    for (let r = 1; r < rows.length; r++) {
-      if (String(rows[r][idIdx] || '').trim() === idValue.trim()) {
-        targetRowIndex = r + 1; // 1-indexed for Sheets
-        break;
-      }
-    }
-
-    if (targetRowIndex === -1) {
-      throw new Error(`Enregistrement avec ${idColumnName} = "${idValue}" non trouvé.`);
-    }
-
-    // 2. Mettre à jour la ligne cible
-    const updateRange = `'${sheetTitle}'!A${targetRowIndex}`;
-    const putUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(
-      updateRange
-    )}?valueInputOption=USER_ENTERED`;
-
-    const putRes = await fetch(putUrl, {
-      method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        range: updateRange,
-        majorDimension: 'ROWS',
-        values: [rowValues],
-      }),
-    });
-
-    if (!putRes.ok) {
-      const err = await putRes.text();
-      throw new Error(`Échec de mise à jour de la ligne ${targetRowIndex} : ${err}`);
-    }
+    return GoogleSheetsWriter.updateRowByPrimaryKey(
+      spreadsheetId,
+      accessToken,
+      sheetTitle,
+      idColumnName,
+      idValue,
+      rowValues
+    );
   }
 
-  /**
-   * Supprime une ligne ciblée par son identifiant unique via batchUpdate deleteDimension
-   * ou fallback clear.
-   */
   public static async deleteRowByPrimaryKey(
     spreadsheetId: string,
     accessToken: string,
@@ -1284,107 +621,13 @@ export class GoogleSheetsService {
     idColumnName: string,
     idValue: string
   ): Promise<void> {
-    // 1. Lire la métadonnée du classeur pour récupérer l'ID numérique de l'onglet
-    let sheetId: number | null = null;
-    try {
-      const metaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties`;
-      const metaRes = await fetch(metaUrl, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (metaRes.ok) {
-        const meta = await metaRes.json();
-        const targetClean = sheetTitle.trim().toLowerCase();
-        const found = (meta.sheets || []).find((s: any) => {
-          const t = (s.properties?.title || '').trim().toLowerCase();
-          return t === targetClean;
-        });
-        if (found && found.properties?.sheetId !== undefined) {
-          sheetId = found.properties.sheetId;
-        }
-      }
-    } catch (e) {
-      console.warn(`[GoogleSheetsService] Impossible de récupérer sheetId pour "${sheetTitle}":`, e);
-    }
-
-    // 2. Trouver l'index de la ligne contenant l'identifiant
-    const getUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/'${sheetTitle}'!A1:Z`;
-    const getRes = await fetch(getUrl, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    if (!getRes.ok) {
-      const err = await getRes.text();
-      throw new Error(`Impossible de lire l'onglet "${sheetTitle}" pour suppression : ${err}`);
-    }
-
-    const sheetData = await getRes.json();
-    const rows: any[][] = sheetData.values || [];
-    if (rows.length === 0) return;
-
-    const colMap = this.buildColumnIndexMap(rows[0]);
-    const idIdx = colMap[normalizeHeader(idColumnName)];
-    if (idIdx === undefined) {
-      throw new Error(`Colonne ID "${idColumnName}" introuvable dans l'onglet "${sheetTitle}"`);
-    }
-
-    let targetRowZeroIndex = -1;
-    for (let r = 1; r < rows.length; r++) {
-      if (String(rows[r][idIdx] || '').trim() === idValue.trim()) {
-        targetRowZeroIndex = r; // index base 0
-        break;
-      }
-    }
-
-    if (targetRowZeroIndex === -1) {
-      // Déjà absent
-      return;
-    }
-
-    // 3. Exécution de la suppression
-    if (sheetId !== null) {
-      // Suppression physique de la dimension ligne
-      const batchUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`;
-      const batchRes = await fetch(batchUrl, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          requests: [
-            {
-              deleteDimension: {
-                range: {
-                  sheetId,
-                  dimension: 'ROWS',
-                  startIndex: targetRowZeroIndex,
-                  endIndex: targetRowZeroIndex + 1,
-                },
-              },
-            },
-          ],
-        }),
-      });
-
-      if (!batchRes.ok) {
-        // Fallback effacement de la plage
-        const clearUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/'${sheetTitle}'!A${
-          targetRowZeroIndex + 1
-        }:Z${targetRowZeroIndex + 1}:clear`;
-        await fetch(clearUrl, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
-      }
-    } else {
-      // Fallback effacement
-      const clearUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/'${sheetTitle}'!A${
-        targetRowZeroIndex + 1
-      }:Z${targetRowZeroIndex + 1}:clear`;
-      await fetch(clearUrl, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-    }
+    return GoogleSheetsWriter.deleteRowByPrimaryKey(
+      spreadsheetId,
+      accessToken,
+      sheetTitle,
+      idColumnName,
+      idValue
+    );
   }
 
   // --- HELPERS INTERNES ---

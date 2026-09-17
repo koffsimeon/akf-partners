@@ -34,6 +34,9 @@ async function runPhase4Tests() {
     }
   }
 
+  sheetsRepo.setMode('MOCK');
+  await sheetsRepo.triggerSync();
+
   // --- TEST 1 : Vérification des 9 onglets obligatoires ---
   console.log('--- 1. STRUCTURE DES 9 ONGLETS OBLIGATOIRES ---');
   const requiredTabs = [

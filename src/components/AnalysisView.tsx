@@ -106,79 +106,79 @@ export function AnalysisView({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
             Centre d’Analyse & Décision
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5 font-medium">
             Indicateurs clés, progression des grades, contrôle des anomalies et recommandations
           </p>
         </div>
 
         {/* Sub-Tabs Pills */}
-        <div className="flex items-center gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1 text-xs shadow-2xs">
+        <div className="flex items-center gap-1.5 overflow-x-auto rounded-2xl border border-slate-200/80 bg-white p-1.5 text-xs shadow-2xs">
           <button
             onClick={() => setSubTab('DECISION')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-bold whitespace-nowrap transition-colors ${
+            className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 font-bold whitespace-nowrap transition-all cursor-pointer ${
               subTab === 'DECISION'
-                ? 'bg-emerald-600 text-white shadow-xs'
-                : 'text-slate-700 hover:bg-slate-100'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/70'
             }`}
           >
             <Target className="h-3.5 w-3.5" />
-            🎯 Où dois-je agir ?
+            <span>Où agir ?</span>
           </button>
           <button
             onClick={() => setSubTab('OVERVIEW')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold whitespace-nowrap transition-colors ${
+            className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 font-bold whitespace-nowrap transition-all cursor-pointer ${
               subTab === 'OVERVIEW'
                 ? 'bg-slate-900 text-white shadow-xs'
-                : 'text-slate-600 hover:bg-slate-100'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/70'
             }`}
           >
-            Vue générale
+            <span>Vue générale</span>
           </button>
           <button
             onClick={() => setSubTab('PERFORMANCE')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold whitespace-nowrap transition-colors ${
+            className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 font-bold whitespace-nowrap transition-all cursor-pointer ${
               subTab === 'PERFORMANCE'
                 ? 'bg-slate-900 text-white shadow-xs'
-                : 'text-slate-600 hover:bg-slate-100'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/70'
             }`}
           >
-            Performance
+            <span>Performance</span>
           </button>
           <button
             onClick={() => setSubTab('PROGRESSION')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold whitespace-nowrap transition-colors ${
+            className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 font-bold whitespace-nowrap transition-all cursor-pointer ${
               subTab === 'PROGRESSION'
                 ? 'bg-slate-900 text-white shadow-xs'
-                : 'text-slate-600 hover:bg-slate-100'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/70'
             }`}
           >
-            Progression
+            <span>Progression</span>
           </button>
           <button
             onClick={() => setSubTab('COMMISSIONS')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold whitespace-nowrap transition-colors ${
+            className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 font-bold whitespace-nowrap transition-all cursor-pointer ${
               subTab === 'COMMISSIONS'
                 ? 'bg-slate-900 text-white shadow-xs'
-                : 'text-slate-600 hover:bg-slate-100'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/70'
             }`}
           >
-            Commissions
+            <span>Commissions</span>
           </button>
           <button
             onClick={() => setSubTab('ANOMALIES')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold whitespace-nowrap transition-colors ${
+            className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 font-bold whitespace-nowrap transition-all cursor-pointer ${
               subTab === 'ANOMALIES'
                 ? 'bg-rose-600 text-white shadow-xs'
                 : priorityAnomaliesCount > 0
                 ? 'text-rose-600 hover:bg-rose-50 font-bold'
-                : 'text-slate-600 hover:bg-slate-100'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/70'
             }`}
           >
             <AlertTriangle className="h-3.5 w-3.5" />
-            Anomalies ({priorityAnomaliesCount})
+            <span>Anomalies ({priorityAnomaliesCount})</span>
           </button>
         </div>
       </div>
@@ -638,16 +638,16 @@ export function AnalysisView({
                       <div className="text-[11px] text-slate-600 bg-amber-50/50 p-2 rounded-lg border border-amber-100 flex flex-col sm:flex-row sm:justify-between gap-1">
                         <span>
                           Obj. Commandes : <strong>{p.orderCount} / {p.targetCmdNextRank}</strong>{' '}
-                          {cmdMissing > 0 ? `(reste ${cmdMissing})` : '✓ Atteint'}
+                          {cmdMissing > 0 ? `(reste ${cmdMissing})` : 'Atteint'}
                         </span>
                         <span>
                           Obj. CA : <strong>{p.ca.toLocaleString()} / {p.targetCaNextRank.toLocaleString()} F</strong>{' '}
-                          {caMissing > 0 ? `(reste ${caMissing.toLocaleString()} F)` : '✓ Atteint'}
+                          {caMissing > 0 ? `(reste ${caMissing.toLocaleString()} F)` : 'Atteint'}
                         </span>
                       </div>
                     ) : (
                       <div className="text-[11px] text-purple-900 bg-purple-50 p-2 rounded-lg text-center font-bold">
-                        🏆 Grade maximal atteint (Signature)
+                        Grade maximal atteint (Signature)
                       </div>
                     )}
                   </div>
@@ -739,7 +739,10 @@ export function AnalysisView({
               <div className={`p-4 rounded-xl border ${negativeBalances.length > 0 ? 'bg-red-50 border-red-200 text-red-900' : 'bg-emerald-50 border-emerald-200 text-emerald-900'}`}>
                 <div className="flex items-center justify-between text-xs font-bold">
                   <span>1. Solde négatif détecté</span>
-                  <span>{negativeBalances.length === 0 ? '🟢 AUCUNE ANOMALIE' : `🔴 ${negativeBalances.length} ERREUR(S)`}</span>
+                  <span className="flex items-center gap-1.5">
+                    <span className={`h-2 w-2 rounded-full ${negativeBalances.length === 0 ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                    {negativeBalances.length === 0 ? 'AUCUNE ANOMALIE' : `${negativeBalances.length} ERREUR(S)`}
+                  </span>
                 </div>
                 {negativeBalances.length > 0 && (
                   <p className="text-xs mt-1">Partenaires avec solde &lt; 0 : {negativeBalances.map((p) => `${p.code} (${p.balance} F)`).join(', ')}</p>
@@ -750,7 +753,10 @@ export function AnalysisView({
               <div className={`p-4 rounded-xl border ${clientsWithoutPartnerAndNotDirect.length > 0 ? 'bg-amber-50 border-amber-200 text-amber-900' : 'bg-emerald-50 border-emerald-200 text-emerald-900'}`}>
                 <div className="flex items-center justify-between text-xs font-bold">
                   <span>2. Client sans partenaire non marqué DIRECT AKF</span>
-                  <span>{clientsWithoutPartnerAndNotDirect.length === 0 ? '🟢 CONFORME' : `🟠 ${clientsWithoutPartnerAndNotDirect.length} NON CONFORME`}</span>
+                  <span className="flex items-center gap-1.5">
+                    <span className={`h-2 w-2 rounded-full ${clientsWithoutPartnerAndNotDirect.length === 0 ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                    {clientsWithoutPartnerAndNotDirect.length === 0 ? 'CONFORME' : `${clientsWithoutPartnerAndNotDirect.length} NON CONFORME`}
+                  </span>
                 </div>
               </div>
 
@@ -758,7 +764,10 @@ export function AnalysisView({
               <div className={`p-4 rounded-xl border ${premiumOrdersOverRank3Commissioned.length > 0 ? 'bg-red-50 border-red-200 text-red-900' : 'bg-emerald-50 border-emerald-200 text-emerald-900'}`}>
                 <div className="flex items-center justify-between text-xs font-bold">
                   <span>3. Commande Premium &gt; rang 3 avec commission indue</span>
-                  <span>{premiumOrdersOverRank3Commissioned.length === 0 ? '🟢 RÈGLE RESPECTÉE (Max 3 cmd Premium)' : `🔴 ${premiumOrdersOverRank3Commissioned.length} INCOHÉRENCE(S)`}</span>
+                  <span className="flex items-center gap-1.5">
+                    <span className={`h-2 w-2 rounded-full ${premiumOrdersOverRank3Commissioned.length === 0 ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                    {premiumOrdersOverRank3Commissioned.length === 0 ? 'RÈGLE RESPECTÉE (Max 3 cmd Premium)' : `${premiumOrdersOverRank3Commissioned.length} INCOHÉRENCE(S)`}
+                  </span>
                 </div>
               </div>
 
@@ -766,7 +775,10 @@ export function AnalysisView({
               <div className={`p-4 rounded-xl border ${ordersWithMathMismatch.length > 0 ? 'bg-red-50 border-red-200 text-red-900' : 'bg-emerald-50 border-emerald-200 text-emerald-900'}`}>
                 <div className="flex items-center justify-between text-xs font-bold">
                   <span>4. Incohérence arithmétique commande (PU x Qté != Total)</span>
-                  <span>{ordersWithMathMismatch.length === 0 ? '🟢 CALCULS EXACTS' : `🔴 ${ordersWithMathMismatch.length} ERREUR(S)`}</span>
+                  <span className="flex items-center gap-1.5">
+                    <span className={`h-2 w-2 rounded-full ${ordersWithMathMismatch.length === 0 ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                    {ordersWithMathMismatch.length === 0 ? 'CALCULS EXACTS' : `${ordersWithMathMismatch.length} ERREUR(S)`}
+                  </span>
                 </div>
               </div>
 
@@ -774,7 +786,10 @@ export function AnalysisView({
               <div className={`p-4 rounded-xl border ${ordersWithoutClient.length > 0 ? 'bg-red-50 border-red-200 text-red-900' : 'bg-emerald-50 border-emerald-200 text-emerald-900'}`}>
                 <div className="flex items-center justify-between text-xs font-bold">
                   <span>5. Commande orpheline sans client</span>
-                  <span>{ordersWithoutClient.length === 0 ? '🟢 AUCUNE COMMANDE ORPHELINE' : `🔴 ${ordersWithoutClient.length} ERREUR(S)`}</span>
+                  <span className="flex items-center gap-1.5">
+                    <span className={`h-2 w-2 rounded-full ${ordersWithoutClient.length === 0 ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                    {ordersWithoutClient.length === 0 ? 'AUCUNE COMMANDE ORPHELINE' : `${ordersWithoutClient.length} ERREUR(S)`}
+                  </span>
                 </div>
               </div>
             </div>

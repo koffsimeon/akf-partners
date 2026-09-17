@@ -115,81 +115,81 @@ export function SystemView({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
             Administration & Diagnostic Système
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5 font-medium">
             Moteur de calcul, audits, configuration, synchronisation et module AKF CODE AI
           </p>
         </div>
 
         {/* Sub-Tabs Pills */}
-        <div className="flex items-center gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1 text-xs shadow-2xs">
+        <div className="flex items-center gap-1.5 overflow-x-auto rounded-2xl border border-slate-200/80 bg-white p-1.5 text-xs shadow-2xs">
           <button
             onClick={() => setSubTab('DIAGNOSTIC')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold whitespace-nowrap transition-colors ${
+            className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 font-bold whitespace-nowrap transition-all cursor-pointer ${
               subTab === 'DIAGNOSTIC'
                 ? 'bg-slate-900 text-white shadow-xs'
-                : 'text-slate-600 hover:bg-slate-100'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/70'
             }`}
           >
             <Activity className="h-3.5 w-3.5" />
-            Diagnostic
+            <span>Diagnostic</span>
           </button>
           <button
             onClick={() => setSubTab('RECALCULATE')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold whitespace-nowrap transition-colors ${
+            className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 font-bold whitespace-nowrap transition-all cursor-pointer ${
               subTab === 'RECALCULATE'
-                ? 'bg-emerald-700 text-white shadow-xs'
-                : 'text-slate-600 hover:bg-slate-100'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/70'
             }`}
           >
             <RefreshCw className="h-3.5 w-3.5" />
-            Recalcul Global
+            <span>Recalcul Global</span>
           </button>
           <button
             onClick={() => setSubTab('LOGS')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold whitespace-nowrap transition-colors ${
+            className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 font-bold whitespace-nowrap transition-all cursor-pointer ${
               subTab === 'LOGS'
                 ? 'bg-slate-900 text-white shadow-xs'
-                : 'text-slate-600 hover:bg-slate-100'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/70'
             }`}
           >
             <FileText className="h-3.5 w-3.5" />
-            Journaux ({auditLogs.length})
+            <span>Journaux ({auditLogs.length})</span>
           </button>
           <button
             onClick={() => setSubTab('CONFIG')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold whitespace-nowrap transition-colors ${
+            className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 font-bold whitespace-nowrap transition-all cursor-pointer ${
               subTab === 'CONFIG'
                 ? 'bg-slate-900 text-white shadow-xs'
-                : 'text-slate-600 hover:bg-slate-100'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/70'
             }`}
           >
             <Sliders className="h-3.5 w-3.5" />
-            Configuration
+            <span>Configuration</span>
           </button>
           <button
             onClick={() => setSubTab('SYNC')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-bold whitespace-nowrap transition-colors ${
+            className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 font-bold whitespace-nowrap transition-all cursor-pointer ${
               subTab === 'SYNC'
-                ? 'bg-emerald-700 text-white shadow-xs'
-                : 'text-emerald-800 hover:bg-emerald-50'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/70'
             }`}
           >
             <Database className="h-3.5 w-3.5" />
-            Google Sheets (Phase 4)
+            <span>Google Sheets</span>
           </button>
           <button
             onClick={() => setSubTab('CODE_AI')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-bold whitespace-nowrap transition-colors ${
+            className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 font-bold whitespace-nowrap transition-all cursor-pointer ${
               subTab === 'CODE_AI'
-                ? 'bg-purple-700 text-white shadow-xs'
+                ? 'bg-purple-600 text-white shadow-xs'
                 : 'text-purple-700 hover:bg-purple-50'
             }`}
           >
             <Sparkles className="h-3.5 w-3.5" />
-            AKF CODE AI
+            <span>AKF CODE AI</span>
           </button>
         </div>
       </div>

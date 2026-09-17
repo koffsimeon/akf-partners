@@ -15,6 +15,7 @@ import {
   Calendar,
   Sparkles,
   BarChart3,
+  PieChart,
 } from 'lucide-react';
 import { Client, Order, Partner, Payment, SyncState } from '../types';
 
@@ -132,7 +133,6 @@ export function DashboardView({
     if (period === 'all') {
       return [...partners].sort((a, b) => b.ca - a.ca).slice(0, 5);
     }
-    // Calculer le CA sur les commandes filtrées pour chaque partenaire
     const caMap = new Map<string, number>();
     for (const o of filteredOrders) {
       if (o.partnerId && o.orderStatus !== 'Annulée') {
@@ -173,6 +173,23 @@ export function DashboardView({
     return Math.max(...chartData.map((d) => d.ca), 100000);
   }, [chartData]);
 
+  // Répartition des partenaires par grade (Pour le Donut Chart moderne inspiré de "Working Format")
+  const rankStats = useMemo(() => {
+    const total = partners.length || 1;
+    const counts = {
+      Neo: partners.filter((p) => p.rank === 'Neo').length,
+      Ambassador: partners.filter((p) => p.rank === 'Ambassador').length,
+      Excellence: partners.filter((p) => p.rank === 'Excellence').length,
+      Signature: partners.filter((p) => p.rank === 'Signature').length,
+    };
+    return [
+      { rank: 'Signature', count: counts.Signature, pct: Math.round((counts.Signature / total) * 100), color: '#8b5cf6' },
+      { rank: 'Excellence', count: counts.Excellence, pct: Math.round((counts.Excellence / total) * 100), color: '#10b981' },
+      { rank: 'Ambassador', count: counts.Ambassador, pct: Math.round((counts.Ambassador / total) * 100), color: '#f59e0b' },
+      { rank: 'Neo', count: counts.Neo, pct: Math.round((counts.Neo / total) * 100), color: '#0ea5e9' },
+    ];
+  }, [partners]);
+
   // Éléments à surveiller
   const inactivePartners = partners.filter((p) => p.status === 'Inactif');
   const partnersCloseToUpgrade = partners.filter((p) => p.nextRank && p.progressPct >= 75);
@@ -180,7 +197,8 @@ export function DashboardView({
   const eligiblePayments = partners.filter((p) => p.balance >= 5000);
   const negativeBalancePartners = partners.filter((p) => p.balance < 0);
 
-  const kpis = [
+  // 6 Cartes KPI inspirées de Job.find et Eduka (dégradés vibrants, squircles translucides)
+  const kpiCards = [
     {
       id: 'partenaires',
       label: 'Partenaires',
@@ -188,77 +206,87 @@ export function DashboardView({
       subtext:
         period === 'all'
           ? `${partners.filter((p) => p.status === 'Actif').length} actifs (${partners.length} total)`
-          : `${newPartnersInPeriod.length} inscrit(s) sur la période`,
+          : `${newPartnersInPeriod.length} inscrit(s) sur période`,
       icon: Users,
-      color: 'emerald',
-      action: () => onNavigateToTab('GESTION'),
-    },
-    {
-      id: 'clients',
-      label: 'Clients',
-      value: period === 'all' ? clients.length : newClientsInPeriod.length,
-      subtext:
-        period === 'all'
-          ? `${clients.filter((c) => c.clientType === 'PARTENAIRE').length} affiliés (${clients.length} total)`
-          : `${newClientsInPeriod.length} créé(s) sur la période`,
-      icon: UserCheck,
-      color: 'blue',
-      action: () => onNavigateToTab('GESTION'),
-    },
-    {
-      id: 'commandes',
-      label: 'Commandes',
-      value: filteredOrders.length,
-      subtext: `${filteredOrders.filter((o) => o.isPremium).length} Premium`,
-      icon: ShoppingBag,
-      color: 'amber',
+      gradient: 'from-indigo-600 to-violet-600',
+      shadowColor: 'shadow-indigo-500/20',
       action: () => onNavigateToTab('GESTION'),
     },
     {
       id: 'ca',
       label: 'Chiffre d’Affaires',
       value: `${totalCa.toLocaleString()} F`,
-      subtext: period === 'all' ? 'Volume total généré' : 'CA de la période',
+      subtext: period === 'all' ? 'Volume global généré' : 'CA de la période',
       icon: TrendingUp,
-      color: 'slate',
+      gradient: 'from-rose-500 to-red-500',
+      shadowColor: 'shadow-rose-500/20',
       action: () => onNavigateToTab('ANALYSE'),
     },
     {
       id: 'commissions',
       label: 'Commissions',
       value: `${totalCommission.toLocaleString()} F`,
-      subtext: `${totalPaid.toLocaleString()} F payés sur la période`,
+      subtext: `${totalPaid.toLocaleString()} F payés sur période`,
       icon: Award,
-      color: 'purple',
+      gradient: 'from-sky-500 to-blue-600',
+      shadowColor: 'shadow-blue-500/20',
       action: () => onNavigateToTab('ANALYSE'),
     },
     {
+      id: 'commandes',
+      label: 'Commandes',
+      value: filteredOrders.length,
+      subtext: `${filteredOrders.filter((o) => o.isPremium).length} Premium acquises`,
+      icon: ShoppingBag,
+      gradient: 'from-amber-400 to-orange-500',
+      shadowColor: 'shadow-amber-500/20',
+      action: () => onNavigateToTab('GESTION'),
+    },
+    {
+      id: 'clients',
+      label: 'Clients Affiliés',
+      value: period === 'all' ? clients.length : newClientsInPeriod.length,
+      subtext:
+        period === 'all'
+          ? `${clients.filter((c) => c.clientType === 'PARTENAIRE').length} affiliés (${clients.length} total)`
+          : `${newClientsInPeriod.length} créé(s) sur période`,
+      icon: UserCheck,
+      gradient: 'from-emerald-500 to-teal-600',
+      shadowColor: 'shadow-emerald-500/20',
+      action: () => onNavigateToTab('GESTION'),
+    },
+    {
       id: 'a_payer',
-      label: 'À payer (Actif)',
+      label: 'À Payer (Solde)',
       value: `${totalToPay.toLocaleString()} F`,
       subtext: `${eligiblePayments.length} partenaire(s) éligible(s)`,
       icon: CreditCard,
-      color: totalToPay > 0 ? 'rose' : 'emerald',
+      gradient: 'from-slate-900 to-slate-800',
+      shadowColor: 'shadow-slate-900/20',
       action: () => onNavigateToTab('GESTION'),
     },
   ];
 
   return (
-    <div className="space-y-6 pb-12">
-      {/* Top Welcome & Period Filter */}
+    <div className="space-y-6">
+      {/* ========================================================================= */}
+      {/* 1. GREETING & PERIOD SELECTOR (Inspi Eduka & Job.find Header)             */}
+      {/* ========================================================================= */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">
-            Cockpit de Pilotage
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            Vue d'ensemble en temps réel du programme AKF Partners
+          <div className="flex items-center gap-2">
+            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
+              Cockpit de Pilotage 👋
+            </h2>
+          </div>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1 font-medium">
+            Supervision des ventes, commissions & intégrité du réseau AKF Partners
           </p>
         </div>
 
-        {/* Period Selector */}
+        {/* Period Selector Tabs (Pill style) */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-          <div className="flex items-center gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1 text-xs shadow-2xs">
+          <div className="flex items-center gap-1 overflow-x-auto rounded-2xl border border-slate-200/80 bg-white p-1.5 text-xs shadow-2xs">
             {[
               { id: 'all', label: 'Tout' },
               { id: 'today', label: 'Aujourd’hui' },
@@ -271,10 +299,10 @@ export function DashboardView({
               <button
                 key={item.id}
                 onClick={() => setPeriod(item.id as PeriodType)}
-                className={`rounded-lg px-2.5 py-1.5 font-medium whitespace-nowrap transition-colors ${
+                className={`rounded-xl px-3 py-1.5 font-semibold whitespace-nowrap transition-all cursor-pointer ${
                   period === item.id
-                    ? 'bg-slate-900 text-white font-bold shadow-xs'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/70'
                 }`}
               >
                 {item.label}
@@ -282,9 +310,9 @@ export function DashboardView({
             ))}
           </div>
 
-          {/* Custom Date Range Inputs */}
+          {/* Custom Date Range Picker */}
           {period === 'custom' && (
-            <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-xs shadow-2xs">
+            <div className="flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-white px-3 py-1.5 text-xs shadow-2xs">
               <Calendar className="h-3.5 w-3.5 text-slate-400" />
               <input
                 type="date"
@@ -306,79 +334,35 @@ export function DashboardView({
         </div>
       </div>
 
-      {/* Quick Actions Bar */}
-      <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-3 text-white shadow-sm">
-        <span className="text-xs font-bold uppercase tracking-wider text-slate-400 px-2 hidden sm:inline">
-          Actions rapides :
-        </span>
-        <button
-          onClick={() => onOpenQuickCreate('PARTNER')}
-          className="flex items-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/20 px-3 py-2 text-xs font-semibold text-white transition-colors cursor-pointer"
-        >
-          <Plus className="h-3.5 w-3.5 text-emerald-400" />
-          + Partenaire
-        </button>
-        <button
-          onClick={() => onOpenQuickCreate('CLIENT')}
-          className="flex items-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/20 px-3 py-2 text-xs font-semibold text-white transition-colors cursor-pointer"
-        >
-          <Plus className="h-3.5 w-3.5 text-blue-400" />
-          + Client
-        </button>
-        <button
-          onClick={() => onOpenQuickCreate('ORDER')}
-          className="flex items-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/20 px-3 py-2 text-xs font-semibold text-white transition-colors cursor-pointer"
-        >
-          <Plus className="h-3.5 w-3.5 text-amber-400" />
-          + Commande
-        </button>
-        <button
-          onClick={() => onOpenQuickCreate('PAYMENT')}
-          className="flex items-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/20 px-3 py-2 text-xs font-semibold text-white transition-colors cursor-pointer"
-        >
-          <Plus className="h-3.5 w-3.5 text-purple-400" />
-          + Paiement
-        </button>
-      </div>
-
-      {/* 6 Clickable KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
-        {kpis.map((kpi) => {
+      {/* ========================================================================= */}
+      {/* 2. 6 VIBRANT TOP METRIC CARDS (Inspi Job.find & Eduka Stat Cards)         */}
+      {/* ========================================================================= */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+        {kpiCards.map((kpi) => {
           const Icon = kpi.icon;
           return (
             <button
               key={kpi.id}
               onClick={kpi.action}
-              className="group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-4 text-left shadow-2xs hover:border-slate-300 hover:shadow-md transition-all active:scale-[0.99] cursor-pointer"
+              className={`group relative overflow-hidden rounded-3xl bg-gradient-to-br ${kpi.gradient} p-5 text-left text-white shadow-sm hover:shadow-lg ${kpi.shadowColor} hover:-translate-y-0.5 transition-all cursor-pointer flex flex-col justify-between`}
             >
+              {/* Background ambient bubble */}
+              <div className="absolute -top-10 -right-10 h-28 w-28 rounded-full bg-white/10 blur-xl pointer-events-none" />
+
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                <span className="text-xs font-bold uppercase tracking-wider text-white/80">
                   {kpi.label}
                 </span>
-                <div
-                  className={`flex h-8 w-8 items-center justify-center rounded-xl transition-colors ${
-                    kpi.color === 'emerald'
-                      ? 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white'
-                      : kpi.color === 'blue'
-                      ? 'bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white'
-                      : kpi.color === 'amber'
-                      ? 'bg-amber-50 text-amber-600 group-hover:bg-amber-600 group-hover:text-white'
-                      : kpi.color === 'purple'
-                      ? 'bg-purple-50 text-purple-600 group-hover:bg-purple-600 group-hover:text-white'
-                      : kpi.color === 'rose'
-                      ? 'bg-rose-50 text-rose-600 group-hover:bg-rose-600 group-hover:text-white'
-                      : 'bg-slate-100 text-slate-600 group-hover:bg-slate-900 group-hover:text-white'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md text-white shadow-xs group-hover:scale-105 transition-transform">
+                  <Icon className="h-5 w-5" />
                 </div>
               </div>
 
               <div className="mt-4">
-                <div className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight font-['JetBrains_Mono']">
+                <div className="text-2xl sm:text-2xl xl:text-3xl font-black tracking-tight font-['JetBrains_Mono'] text-white">
                   {kpi.value}
                 </div>
-                <div className="text-[11px] text-slate-400 font-medium mt-0.5 truncate">
+                <div className="mt-2 inline-flex items-center rounded-xl bg-black/15 px-2.5 py-0.5 text-[11px] font-medium text-white/90 backdrop-blur-xs truncate max-w-full">
                   {kpi.subtext}
                 </div>
               </div>
@@ -387,56 +371,64 @@ export function DashboardView({
         })}
       </div>
 
-      {/* Grid: Visual Analysis (Left) & À Surveiller (Right) */}
+      {/* ========================================================================= */}
+      {/* 3. MAIN DASHBOARD GRID (2 Columns: Analysis & Actions)                    */}
+      {/* ========================================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Visual Analysis (7 cols) */}
+        {/* ----------------------------------------------------------------------- */}
+        {/* LEFT COLUMN (7 COLS): CHARTS, TOP PARTNERS & RATIOS                     */}
+        {/* ----------------------------------------------------------------------- */}
         <div className="lg:col-span-7 space-y-6">
-          {/* Graphique Dynamique d'Évolution du CA */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs">
-            <div className="flex items-center justify-between mb-3">
+          {/* Dynamic CA & Commissions Evolution Chart Card */}
+          <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-2xs">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-5">
               <div>
                 <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                   <BarChart3 className="h-4 w-4 text-emerald-600" />
                   Dynamique du Chiffre d'Affaires & Commissions
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-400 mt-0.5">
                   {period === 'all'
-                    ? 'Historique complet des ventes et commissions'
-                    : `Évolution sur la période sélectionnée (${filteredOrders.length} commande(s))`}
+                    ? 'Historique complet des ventes et commissions générées'
+                    : `Période sélectionnée • ${filteredOrders.length} commande(s)`}
                 </p>
               </div>
+
               <div className="flex items-center gap-3 text-xs">
                 <div className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-sm bg-slate-900 inline-block" />
-                  <span className="text-slate-600 font-medium">CA</span>
+                  <span className="h-2.5 w-2.5 rounded-full bg-slate-900 inline-block" />
+                  <span className="text-slate-600 font-semibold">CA</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-sm bg-emerald-500 inline-block" />
-                  <span className="text-slate-600 font-medium">Commissions</span>
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 inline-block" />
+                  <span className="text-slate-600 font-semibold">Commissions</span>
                 </div>
               </div>
             </div>
 
             {chartData.length === 0 ? (
-              <div className="h-44 flex flex-col items-center justify-center text-slate-400 text-xs rounded-xl bg-slate-50 border border-dashed border-slate-200">
-                <ShoppingBag className="h-6 w-6 mb-1 text-slate-300" />
-                Aucune commande enregistrée sur cette période
+              <div className="h-48 flex flex-col items-center justify-center text-slate-400 text-xs rounded-2xl bg-slate-50 border border-dashed border-slate-200">
+                <ShoppingBag className="h-7 w-7 mb-2 text-slate-300" />
+                Aucune vente enregistrée sur cette période
               </div>
             ) : (
-              <div className="space-y-2">
-                {/* Bar Chart Container */}
-                <div className="h-44 flex items-end gap-2 pt-6 pb-2 px-2 border-b border-slate-100 relative">
-                  {/* Tooltip on hover */}
+              <div className="space-y-3">
+                {/* Modern Bar Chart Container */}
+                <div className="h-48 flex items-end gap-2.5 pt-8 pb-2 px-2 border-b border-slate-100 relative">
                   {hoveredPoint && (
-                    <div className="absolute top-0 right-2 z-10 rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] text-white shadow-md">
+                    <div className="absolute top-0 right-2 z-10 rounded-xl bg-slate-900 px-3 py-1.5 text-xs text-white shadow-lg animate-in fade-in">
                       <span className="text-slate-400">{hoveredPoint.label} : </span>
-                      <strong className="text-white">{hoveredPoint.ca.toLocaleString()} F</strong>
-                      <span className="text-emerald-400 ml-1.5">({hoveredPoint.comm.toLocaleString()} F com.)</span>
+                      <strong className="text-white font-['JetBrains_Mono']">
+                        {hoveredPoint.ca.toLocaleString()} F
+                      </strong>
+                      <span className="text-emerald-400 ml-2 font-['JetBrains_Mono']">
+                        ({hoveredPoint.comm.toLocaleString()} F com.)
+                      </span>
                     </div>
                   )}
 
                   {chartData.map((pt, i) => {
-                    const heightPct = Math.max(8, Math.round((pt.ca / maxChartCa) * 100));
+                    const heightPct = Math.max(10, Math.round((pt.ca / maxChartCa) * 100));
                     const commPct = pt.ca > 0 ? Math.round((pt.comm / pt.ca) * 100) : 0;
                     return (
                       <div
@@ -445,17 +437,20 @@ export function DashboardView({
                         onMouseLeave={() => setHoveredPoint(null)}
                         className="flex-1 h-full flex flex-col justify-end items-center group cursor-pointer"
                       >
-                        <div
-                          className="w-full max-w-[28px] rounded-t-md bg-slate-900 group-hover:bg-slate-700 transition-all relative overflow-hidden flex flex-col justify-end"
-                          style={{ height: `${heightPct}%` }}
-                        >
-                          {/* Inner Commission segment */}
+                        {/* Background track */}
+                        <div className="w-full max-w-[32px] h-full flex flex-col justify-end rounded-t-xl bg-slate-100/60 p-0.5 group-hover:bg-slate-100 transition-colors">
                           <div
-                            className="w-full bg-emerald-500"
-                            style={{ height: `${Math.min(100, commPct * 2)}%` }}
-                          />
+                            className="w-full rounded-t-lg bg-slate-900 group-hover:bg-slate-700 transition-all relative overflow-hidden flex flex-col justify-end"
+                            style={{ height: `${heightPct}%` }}
+                          >
+                            {/* Inner Commission segment */}
+                            <div
+                              className="w-full bg-emerald-500"
+                              style={{ height: `${Math.min(100, commPct * 2.2)}%` }}
+                            />
+                          </div>
                         </div>
-                        <span className="text-[10px] text-slate-400 font-mono mt-1.5 group-hover:text-slate-900 font-medium">
+                        <span className="text-[10px] text-slate-400 font-mono mt-2 group-hover:text-slate-900 font-semibold">
                           {pt.label}
                         </span>
                       </div>
@@ -463,59 +458,80 @@ export function DashboardView({
                   })}
                 </div>
 
-                <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
-                  <span>Total CA période : <strong className="text-slate-700">{totalCa.toLocaleString()} FCFA</strong></span>
-                  <span>Total Com. période : <strong className="text-emerald-700">{totalCommission.toLocaleString()} FCFA</strong></span>
+                <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
+                  <span>
+                    Total CA :{' '}
+                    <strong className="text-slate-900 font-['JetBrains_Mono']">
+                      {totalCa.toLocaleString()} FCFA
+                    </strong>
+                  </span>
+                  <span>
+                    Total Commissions :{' '}
+                    <strong className="text-emerald-700 font-['JetBrains_Mono']">
+                      {totalCommission.toLocaleString()} FCFA
+                    </strong>
+                  </span>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Top Partenaires Chart / Ranking */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs">
+          {/* Top Partenaires (Inspi Job.find Ranked List) */}
+          <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-2xs">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-sm font-bold text-slate-900">
-                  Top Partenaires {period !== 'all' ? '(Période sélectionnée)' : '(Global)'}
+                  Top Partenaires {period !== 'all' ? '(Période sélectionnée)' : '(Volume Global)'}
                 </h3>
-                <p className="text-xs text-slate-500">Classement selon le volume de ventes généré</p>
+                <p className="text-xs text-slate-400 mt-0.5">Classement des meilleurs apporteurs d'affaires</p>
               </div>
               <button
                 onClick={() => onNavigateToTab('ANALYSE')}
-                className="text-xs font-semibold text-emerald-700 hover:underline flex items-center gap-1 cursor-pointer"
+                className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 cursor-pointer transition-colors"
               >
-                Voir tout <ArrowUpRight className="h-3.5 w-3.5" />
+                <span>Voir tout</span>
+                <ArrowUpRight className="h-3.5 w-3.5" />
               </button>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {topPartners.map((p: any, idx) => {
                 const partnerCa = period === 'all' ? p.ca : (p.periodCa ?? p.ca);
-                const maxCa = period === 'all' ? (topPartners[0]?.ca || 1) : ((topPartners[0] as any)?.periodCa || topPartners[0]?.ca || 1);
+                const maxCa =
+                  period === 'all'
+                    ? topPartners[0]?.ca || 1
+                    : (topPartners[0] as any)?.periodCa || topPartners[0]?.ca || 1;
                 const pct = Math.max(4, Math.round((partnerCa / (maxCa || 1)) * 100));
+
+                const rankBadgeColors =
+                  p.rank === 'Signature'
+                    ? 'bg-purple-100 text-purple-800'
+                    : p.rank === 'Excellence'
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : p.rank === 'Ambassador'
+                    ? 'bg-amber-100 text-amber-800'
+                    : 'bg-sky-100 text-sky-800';
+
                 return (
                   <div
                     key={p.id}
                     onClick={() => onSelectPartner(p)}
-                    className="group cursor-pointer rounded-xl p-2.5 hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-200"
+                    className="group cursor-pointer rounded-2xl p-3 hover:bg-slate-50 border border-transparent hover:border-slate-200/80 transition-all"
                   >
-                    <div className="flex items-center justify-between text-xs mb-1.5">
-                      <div className="flex items-center gap-2">
-                        <span className="flex h-5 w-5 items-center justify-center rounded-md bg-slate-100 text-[10px] font-bold text-slate-600">
+                    <div className="flex items-center justify-between text-xs mb-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-slate-100 font-extrabold text-[11px] text-slate-700 group-hover:bg-slate-900 group-hover:text-white transition-colors">
                           #{idx + 1}
-                        </span>
-                        <span className="font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
-                          {p.code} — {p.fullName}
-                        </span>
-                        <span
-                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
-                            p.rank === 'Signature'
-                              ? 'bg-purple-100 text-purple-800'
-                              : p.rank === 'Excellence'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-amber-100 text-amber-800'
-                          }`}
-                        >
+                        </div>
+                        <div>
+                          <span className="font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
+                            {p.fullName}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-mono ml-2">
+                            {p.code}
+                          </span>
+                        </div>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${rankBadgeColors}`}>
                           {p.rank}
                         </span>
                       </div>
@@ -526,7 +542,7 @@ export function DashboardView({
 
                     <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
                       <div
-                        className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-amber-500 transition-all"
+                        className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all"
                         style={{ width: `${pct}%` }}
                       />
                     </div>
@@ -536,232 +552,326 @@ export function DashboardView({
             </div>
           </div>
 
-          {/* Évolution CA & Commissions (Summary Box) */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs">
-            <h3 className="text-sm font-bold text-slate-900 mb-1">Ratios Financiers & Distribution des Commissions</h3>
-            <p className="text-xs text-slate-500 mb-4">
+          {/* Ratios Financiers & Distribution Card */}
+          <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-2xs">
+            <h3 className="text-sm font-bold text-slate-900 mb-1">
+              Ratios Financiers & Solvabilité du Réseau
+            </h3>
+            <p className="text-xs text-slate-400 mb-4">
               Indicateurs de solvabilité et de répartition effective des commissions
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-100">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+              <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100">
                 <span className="text-xs text-slate-500 font-medium">Taux moyen effectif</span>
                 <div className="text-xl font-black text-slate-900 font-['JetBrains_Mono'] mt-1">
                   {totalCa > 0 ? ((totalCommission / totalCa) * 100).toFixed(1) : '0'} %
                 </div>
-                <span className="text-[10px] text-slate-400">Règle max 3 cmd Premium</span>
-              </div>
-
-              <div className="rounded-xl bg-emerald-50/70 p-3.5 border border-emerald-100">
-                <span className="text-xs text-emerald-800 font-medium">Commissions versées</span>
-                <div className="text-xl font-black text-emerald-800 font-['JetBrains_Mono'] mt-1">
-                  {totalPaid.toLocaleString()} F
-                </div>
-                <span className="text-[10px] text-emerald-600">
-                  {totalCommission > 0
-                    ? `${Math.min(100, Math.round((totalPaid / totalCommission) * 100))}% du dû période`
-                    : 'Paiements enregistrés'}
+                <span className="text-[10px] text-slate-400 mt-0.5 block">
+                  Plafond 3 cmd Premium
                 </span>
               </div>
 
-              <div className="rounded-xl bg-amber-50/70 p-3.5 border border-amber-100">
+              <div className="rounded-2xl bg-emerald-50/70 p-4 border border-emerald-100/80">
+                <span className="text-xs text-emerald-800 font-medium">Commissions décaissées</span>
+                <div className="text-xl font-black text-emerald-800 font-['JetBrains_Mono'] mt-1">
+                  {totalPaid.toLocaleString()} F
+                </div>
+                <span className="text-[10px] text-emerald-600 mt-0.5 block font-medium">
+                  {totalCommission > 0
+                    ? `${Math.min(100, Math.round((totalPaid / totalCommission) * 100))}% du dû période`
+                    : 'Paiements effectués'}
+                </span>
+              </div>
+
+              <div className="rounded-2xl bg-amber-50/70 p-4 border border-amber-100/80">
                 <span className="text-xs text-amber-800 font-medium">Solde en attente de retrait</span>
                 <div className="text-xl font-black text-amber-800 font-['JetBrains_Mono'] mt-1">
                   {totalToPay.toLocaleString()} F
                 </div>
-                <span className="text-[10px] text-amber-600">
-                  {eligiblePayments.length} partenaire(s) &gt;= 5 000 F
+                <span className="text-[10px] text-amber-600 mt-0.5 block font-medium">
+                  {eligiblePayments.length} éligible(s) &gt;= 5 000 F
                 </span>
               </div>
             </div>
 
             {negativeBalancePartners.length === 0 && (
-              <div className="mt-3.5 flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs text-emerald-800 border border-emerald-200">
+              <div className="mt-4 flex items-center gap-2.5 rounded-2xl bg-emerald-50/80 px-4 py-2.5 text-xs text-emerald-800 border border-emerald-200/80">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
                 <span>
-                  <strong>Équilibre financier parfait :</strong> Aucun solde négatif détecté parmi l'ensemble des partenaires.
+                  <strong>Équilibre financier parfait :</strong> Aucun solde négatif détecté parmi
+                  l'ensemble des partenaires.
                 </span>
               </div>
             )}
           </div>
         </div>
 
-        {/* Right Column: À Surveiller (5 cols) */}
-        <div className="lg:col-span-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-amber-600" />
-              Éléments à Surveiller
-            </h3>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-              Cockpit
-            </span>
-          </div>
-
-          {/* Watchlist Card 1: Paiements à traiter */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs">
-            <div className="flex items-center justify-between text-xs mb-2">
-              <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                <CreditCard className="h-3.5 w-3.5 text-purple-600" />
-                Paiements éligibles à traiter ({eligiblePayments.length})
-              </span>
-              <span className="text-[10px] text-purple-700 font-semibold bg-purple-50 px-2 py-0.5 rounded-md">
-                &gt;= 5 000 FCFA
+        {/* ----------------------------------------------------------------------- */}
+        {/* RIGHT COLUMN (5 COLS): DONUT CHART & OPERATIONAL WATCHLIST              */}
+        {/* ----------------------------------------------------------------------- */}
+        <div className="lg:col-span-5 space-y-6">
+          {/* ===================================================================== */}
+          {/* DONUT CHART: Répartition par Grade (Inspi "Working Format" Job.find)  */}
+          {/* ===================================================================== */}
+          <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-2xs">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <PieChart className="h-4 w-4 text-indigo-600" />
+                  Répartition par Grade
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Structure de l'effectif des {partners.length} partenaires
+                </p>
+              </div>
+              <span className="text-[11px] font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-xl">
+                4 Niveaux
               </span>
             </div>
 
-            {eligiblePayments.length === 0 ? (
-              <p className="text-xs text-slate-400 py-1">Aucun solde partenaire en attente de paiement.</p>
-            ) : (
-              <div className="space-y-2 mt-2">
-                {eligiblePayments.slice(0, 3).map((p) => (
-                  <div
-                    key={p.id}
-                    onClick={() => onSelectPartner(p)}
-                    className="flex items-center justify-between rounded-xl bg-slate-50 p-2.5 hover:bg-purple-50/50 cursor-pointer transition-colors"
-                  >
-                    <div>
-                      <span className="text-xs font-bold text-slate-900">{p.code}</span>
-                      <span className="text-xs text-slate-600 ml-1.5">{p.fullName}</span>
+            {/* Circular Donut Diagram (SVG) */}
+            <div className="flex flex-col items-center py-3">
+              <div className="relative flex items-center justify-center">
+                <svg className="w-44 h-44 -rotate-90" viewBox="0 0 140 140">
+                  {/* Base Circle Track */}
+                  <circle
+                    cx="70"
+                    cy="70"
+                    r="54"
+                    fill="transparent"
+                    stroke="#f1f5f9"
+                    strokeWidth="16"
+                  />
+                  {/* SVG Segments based on rank percentage */}
+                  {(() => {
+                    const circumference = 2 * Math.PI * 54; // ~339.29
+                    let accumulatedOffset = 0;
+                    return rankStats.map((item, idx) => {
+                      const strokeDasharray = `${(item.pct / 100) * circumference} ${circumference}`;
+                      const strokeDashoffset = -accumulatedOffset;
+                      accumulatedOffset += (item.pct / 100) * circumference;
+                      return (
+                        <circle
+                          key={idx}
+                          cx="70"
+                          cy="70"
+                          r="54"
+                          fill="transparent"
+                          stroke={item.color}
+                          strokeWidth="16"
+                          strokeDasharray={strokeDasharray}
+                          strokeDashoffset={strokeDashoffset}
+                          className="transition-all duration-700"
+                        />
+                      );
+                    });
+                  })()}
+                </svg>
+
+                {/* Donut Center Label */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    Total
+                  </span>
+                  <span className="text-3xl font-black text-slate-900 font-['JetBrains_Mono']">
+                    {partners.length}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-medium">Partenaires</span>
+                </div>
+              </div>
+
+              {/* Donut Legend (Directly inspired by Job.find legend) */}
+              <div className="grid grid-cols-2 gap-x-6 gap-y-2 mt-4 w-full px-2">
+                {rankStats.map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="h-2.5 w-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: item.color }}
+                      />
+                      <span className="text-slate-600 font-medium">{item.rank}</span>
                     </div>
-                    <span className="text-xs font-bold text-emerald-700 font-['JetBrains_Mono']">
-                      {p.balance.toLocaleString()} FCFA
+                    <span className="font-bold text-slate-900 font-['JetBrains_Mono']">
+                      {item.count}{' '}
+                      <span className="text-slate-400 font-normal">({item.pct}%)</span>
                     </span>
                   </div>
                 ))}
               </div>
-            )}
+            </div>
           </div>
 
-          {/* Watchlist Card 2: Proches d'un changement de grade */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs">
-            <div className="flex items-center justify-between text-xs mb-2">
-              <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-                Proches d’une promotion ({partnersCloseToUpgrade.length})
-              </span>
-              <span className="text-[10px] text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded-md">
-                &gt;= 75%
+          {/* ===================================================================== */}
+          {/* OPERATIONAL WATCHLIST / ÉLÉMENTS À SURVEILLER                         */}
+          {/* ===================================================================== */}
+          <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                Éléments à Surveiller
+              </h3>
+              <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-xl">
+                Priorité
               </span>
             </div>
 
-            {partnersCloseToUpgrade.length === 0 ? (
-              <p className="text-xs text-slate-400 py-1">Aucun partenaire en phase d'accès imminent.</p>
-            ) : (
-              <div className="space-y-2.5 mt-2">
-                {partnersCloseToUpgrade.slice(0, 3).map((p) => (
-                  <div
-                    key={p.id}
-                    onClick={() => onSelectPartner(p)}
-                    className="rounded-xl bg-slate-50 p-2.5 hover:bg-amber-50/50 cursor-pointer transition-colors"
-                  >
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="font-bold text-slate-900">{p.code} — {p.fullName}</span>
-                      <span className="font-extrabold text-amber-700">{p.progressPct}%</span>
-                    </div>
-                    <div className="text-[11px] text-slate-500 mt-0.5">
-                      Vers <strong className="text-slate-700">{p.nextRank}</strong> (CA : {p.ca.toLocaleString()} / {p.targetCaNextRank.toLocaleString()} F)
-                    </div>
-                  </div>
-                ))}
+            {/* 1. Paiements éligibles */}
+            <div className="rounded-2xl border border-purple-100 bg-purple-50/40 p-3.5 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-purple-900 flex items-center gap-1.5">
+                  <CreditCard className="h-3.5 w-3.5 text-purple-600" />
+                  Paiements éligibles ({eligiblePayments.length})
+                </span>
+                <span className="text-[10px] text-purple-700 font-bold bg-purple-100 px-2 py-0.5 rounded-md">
+                  &gt;= 5 000 F
+                </span>
               </div>
-            )}
-          </div>
 
-          {/* Watchlist Card 3: Partenaires inactifs */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs">
-            <div className="flex items-center justify-between text-xs mb-2">
-              <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                <Clock className="h-3.5 w-3.5 text-rose-500" />
-                Partenaires inactifs ({inactivePartners.length})
-              </span>
-              <span className="text-[10px] text-rose-700 font-semibold bg-rose-50 px-2 py-0.5 rounded-md">
-                À relancer
-              </span>
+              {eligiblePayments.length === 0 ? (
+                <p className="text-xs text-slate-400 py-1">Aucun solde en attente de décaissement.</p>
+              ) : (
+                <div className="space-y-1.5 pt-1">
+                  {eligiblePayments.slice(0, 3).map((p) => (
+                    <div
+                      key={p.id}
+                      onClick={() => onSelectPartner(p)}
+                      className="flex items-center justify-between rounded-xl bg-white p-2 hover:bg-purple-100/60 cursor-pointer transition-colors shadow-2xs"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-900">{p.code}</span>
+                        <span className="text-xs text-slate-600">{p.fullName}</span>
+                      </div>
+                      <span className="text-xs font-bold text-emerald-700 font-['JetBrains_Mono']">
+                        {p.balance.toLocaleString()} F
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {inactivePartners.length === 0 ? (
-              <p className="text-xs text-slate-400 py-1">Tous les partenaires sont actuellement actifs.</p>
-            ) : (
-              <div className="space-y-2 mt-2">
-                {inactivePartners.map((p) => (
-                  <div
-                    key={p.id}
-                    onClick={() => onSelectPartner(p)}
-                    className="flex items-center justify-between rounded-xl bg-slate-50 p-2.5 hover:bg-rose-50/50 cursor-pointer transition-colors"
-                  >
-                    <div>
-                      <span className="text-xs font-bold text-slate-900">{p.code}</span>
-                      <span className="text-xs text-slate-600 ml-1.5">{p.fullName}</span>
-                    </div>
-                    <span className="text-xs text-slate-400">{p.phone}</span>
-                  </div>
-                ))}
+            {/* 2. Proches d'un changement de grade */}
+            <div className="rounded-2xl border border-amber-100 bg-amber-50/40 p-3.5 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-amber-900 flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-amber-600" />
+                  Proches d’une promotion ({partnersCloseToUpgrade.length})
+                </span>
+                <span className="text-[10px] text-amber-700 font-bold bg-amber-100 px-2 py-0.5 rounded-md">
+                  &gt;= 75%
+                </span>
               </div>
-            )}
-          </div>
 
-          {/* Watchlist Card 4: Commissions en attente */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs">
-            <div className="flex items-center justify-between text-xs mb-2">
-              <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                <Award className="h-3.5 w-3.5 text-blue-600" />
-                Commandes en cours ({pendingOrders.length})
-              </span>
-              <span className="text-[10px] text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded-md">
-                0 com. acquise
-              </span>
+              {partnersCloseToUpgrade.length === 0 ? (
+                <p className="text-xs text-slate-400 py-1">Aucun partenaire proche du seuil supérieur.</p>
+              ) : (
+                <div className="space-y-2 pt-1">
+                  {partnersCloseToUpgrade.slice(0, 2).map((p) => (
+                    <div
+                      key={p.id}
+                      onClick={() => onSelectPartner(p)}
+                      className="rounded-xl bg-white p-2.5 hover:bg-amber-100/60 cursor-pointer transition-colors shadow-2xs"
+                    >
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-bold text-slate-900">
+                          {p.code} — {p.fullName}
+                        </span>
+                        <span className="font-black text-amber-700">{p.progressPct}%</span>
+                      </div>
+                      <div className="text-[11px] text-slate-500 mt-0.5">
+                        Vers <strong className="text-slate-800">{p.nextRank}</strong> (CA :{' '}
+                        {p.ca.toLocaleString()} / {p.targetCaNextRank.toLocaleString()} F)
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            {pendingOrders.length === 0 ? (
-              <p className="text-xs text-slate-400 py-1">Aucune commande en attente de finalisation.</p>
-            ) : (
-              <div className="space-y-2 mt-2">
-                {pendingOrders.slice(0, 2).map((o) => (
-                  <div
-                    key={o.id}
-                    onClick={() => onSelectOrder(o)}
-                    className="flex items-center justify-between rounded-xl bg-slate-50 p-2.5 hover:bg-blue-50/50 cursor-pointer transition-colors"
-                  >
-                    <div>
-                      <span className="text-xs font-bold text-slate-900">{o.id}</span>
-                      <span className="text-xs text-slate-600 ml-1.5">{o.partnerCode || o.clientName}</span>
-                    </div>
-                    <span className="text-xs font-semibold text-slate-600 font-['JetBrains_Mono']">
-                      {o.orderStatus} • {o.totalAmount.toLocaleString()} F
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
 
-          {/* Watchlist Card 5: État d'intégrité & Sync */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs">
-            <div className="flex items-center justify-between text-xs mb-1">
-              <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                <AlertTriangle className="h-3.5 w-3.5 text-slate-500" />
-                État d'intégrité & Sync
-              </span>
-              <span
-                className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                  syncState.status === 'SYNCHRONISE'
-                    ? 'bg-emerald-100 text-emerald-800'
-                    : 'bg-amber-100 text-amber-800'
-                }`}
+            {/* 3. Partenaires inactifs */}
+            <div className="rounded-2xl border border-rose-100 bg-rose-50/40 p-3.5 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-rose-900 flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5 text-rose-500" />
+                  Partenaires inactifs ({inactivePartners.length})
+                </span>
+                <span className="text-[10px] text-rose-700 font-bold bg-rose-100 px-2 py-0.5 rounded-md">
+                  À relancer
+                </span>
+              </div>
+
+              {inactivePartners.length === 0 ? (
+                <p className="text-xs text-slate-400 py-1">Tous les partenaires sont actifs.</p>
+              ) : (
+                <div className="space-y-1.5 pt-1">
+                  {inactivePartners.slice(0, 2).map((p) => (
+                    <div
+                      key={p.id}
+                      onClick={() => onSelectPartner(p)}
+                      className="flex items-center justify-between rounded-xl bg-white p-2 hover:bg-rose-100/60 cursor-pointer transition-colors shadow-2xs"
+                    >
+                      <div>
+                        <span className="text-xs font-bold text-slate-900">{p.code}</span>
+                        <span className="text-xs text-slate-600 ml-1.5">{p.fullName}</span>
+                      </div>
+                      <span className="text-xs text-slate-400 font-mono">{p.phone}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 4. Commandes en attente */}
+            <div className="rounded-2xl border border-sky-100 bg-sky-50/40 p-3.5 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-sky-900 flex items-center gap-1.5">
+                  <ShoppingBag className="h-3.5 w-3.5 text-sky-600" />
+                  Commandes en cours ({pendingOrders.length})
+                </span>
+                <span className="text-[10px] text-sky-700 font-bold bg-sky-100 px-2 py-0.5 rounded-md">
+                  En attente
+                </span>
+              </div>
+
+              {pendingOrders.length === 0 ? (
+                <p className="text-xs text-slate-400 py-1">Aucune commande en attente.</p>
+              ) : (
+                <div className="space-y-1.5 pt-1">
+                  {pendingOrders.slice(0, 2).map((o) => (
+                    <div
+                      key={o.id}
+                      onClick={() => onSelectOrder(o)}
+                      className="flex items-center justify-between rounded-xl bg-white p-2 hover:bg-sky-100/60 cursor-pointer transition-colors shadow-2xs"
+                    >
+                      <div>
+                        <span className="text-xs font-bold text-slate-900">{o.id}</span>
+                        <span className="text-xs text-slate-600 ml-1.5">
+                          {o.partnerCode || o.clientName}
+                        </span>
+                      </div>
+                      <span className="text-xs font-semibold text-slate-700 font-['JetBrains_Mono']">
+                        {o.totalAmount.toLocaleString()} F
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 5. Intégrité Système & Diagnostic */}
+            <div className="pt-2">
+              <button
+                onClick={() => onNavigateToTab('SYSTEME')}
+                className="w-full flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-xs font-bold text-slate-700 hover:bg-slate-100 cursor-pointer transition-colors"
               >
-                {syncState.status}
-              </span>
+                <span className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  <span>Consulter le Diagnostic Système (11 contrôles)</span>
+                </span>
+                <ChevronRight className="h-4 w-4 text-slate-400" />
+              </button>
             </div>
-            <p className="text-[11px] text-slate-500">
-              Dernière sync : {syncState.lastSync ? new Date(syncState.lastSync).toLocaleTimeString('fr-FR') : 'Non confirmée'}
-            </p>
-            <button
-              onClick={() => onNavigateToTab('SYSTEME')}
-              className="mt-3 w-full flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
-            >
-              Consulter le Diagnostic système (11 contrôles)
-              <ChevronRight className="h-3.5 w-3.5" />
-            </button>
           </div>
         </div>
       </div>

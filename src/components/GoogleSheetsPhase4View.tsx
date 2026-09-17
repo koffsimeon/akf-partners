@@ -532,7 +532,7 @@ export function GoogleSheetsPhase4View({ onRefreshData }: GoogleSheetsPhase4View
               <div className="flex items-center gap-2">
                 <span className="h-2.5 w-2.5 rounded-full bg-emerald-600 animate-pulse" />
                 <span className="font-bold text-xs">
-                  🟢 Ce fichier Google Sheets gère activement l'application
+                  Ce fichier Google Sheets gère activement l'application
                 </span>
               </div>
               <p className="text-[11px] text-slate-600">
@@ -573,7 +573,7 @@ export function GoogleSheetsPhase4View({ onRefreshData }: GoogleSheetsPhase4View
                         }`}
                       />
                       <span className="truncate">
-                        {isMobileTab && tab.found && tab.headerValid ? '📱 MOBILE — Conforme' : tab.name}
+                        {isMobileTab && tab.found && tab.headerValid ? 'MOBILE — Conforme' : tab.name}
                       </span>
                     </div>
                     <span
@@ -601,15 +601,15 @@ export function GoogleSheetsPhase4View({ onRefreshData }: GoogleSheetsPhase4View
                       </div>
                       <div className="text-[11px] text-slate-600 space-y-1 pt-1.5 border-t border-slate-200">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-emerald-600 font-bold">✓</span>
+                          <CheckCircle2 className="h-3 w-3 text-emerald-600 shrink-0" />
                           <span className="truncate">PANNEAU DE COMMANDE | COCHER</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-emerald-600 font-bold">✓</span>
+                          <CheckCircle2 className="h-3 w-3 text-emerald-600 shrink-0" />
                           <span className="truncate">Initialiser & Recalculer</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-emerald-600 font-bold">✓</span>
+                          <CheckCircle2 className="h-3 w-3 text-emerald-600 shrink-0" />
                           <span className="truncate">ID | Grade | Commandes | CA</span>
                         </div>
                       </div>

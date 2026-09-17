@@ -628,6 +628,42 @@
   },
   "logs": [
     {
+      "id": "LOG015",
+      "timestamp": "2026-09-17T14:14:14.189Z",
+      "user": "admin@akfpartners.bj",
+      "actionType": "SYNC",
+      "description": "Synchronisation manuelle exécutée avec succès",
+      "oldValue": "EN_ATTENTE",
+      "newValue": "SYNCHRONISE"
+    },
+    {
+      "id": "LOG014",
+      "timestamp": "2026-09-17T14:11:37.222Z",
+      "user": "admin@akfpartners.bj",
+      "actionType": "SYNC",
+      "description": "Synchronisation manuelle exécutée avec succès",
+      "oldValue": "EN_ATTENTE",
+      "newValue": "SYNCHRONISE"
+    },
+    {
+      "id": "LOG013",
+      "timestamp": "2026-09-17T12:30:17.739Z",
+      "user": "admin@akfpartners.bj",
+      "actionType": "SYNC",
+      "description": "Synchronisation manuelle exécutée avec succès",
+      "oldValue": "EN_ATTENTE",
+      "newValue": "SYNCHRONISE"
+    },
+    {
+      "id": "LOG012",
+      "timestamp": "2026-09-17T12:29:44.560Z",
+      "user": "admin@akfpartners.bj",
+      "actionType": "SYNC",
+      "description": "Synchronisation manuelle exécutée avec succès",
+      "oldValue": "EN_ATTENTE",
+      "newValue": "SYNCHRONISE"
+    },
+    {
       "id": "LOG011",
       "timestamp": "2026-09-11T22:05:21.399Z",
       "user": "admin@akfpartners.bj",
@@ -729,8 +765,8 @@
   ],
   "syncState": {
     "status": "SYNCHRONISE",
-    "lastSync": "2026-09-11T22:05:10.708Z",
-    "pendingCount": 6,
+    "lastSync": "2026-09-17T14:14:14.189Z",
+    "pendingCount": 0,
     "errors": []
   }
 }

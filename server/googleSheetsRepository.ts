@@ -332,9 +332,14 @@ export class GoogleSheetsRepository implements ISheetsRepository {
   // --- ÉCRITURE RÉELLE EN PRODUCTION ---
 
   private ensureWriteAllowed() {
+    if (this._mode === 'SHEETS_READONLY') {
+      throw new Error(
+        'Protection active : L’écriture est bloquée (MODE LECTURE SEULE ACTIF).'
+      );
+    }
     if (!this.spreadsheetId || !this.accessToken) {
       throw new Error(
-        '⚠️ Erreur de connexion : Identifiant Google Sheets ou jeton d’accès manquant.'
+        'Erreur de connexion : Identifiant Google Sheets ou jeton d’accès manquant.'
       );
     }
   }

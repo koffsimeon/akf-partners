@@ -3,7 +3,11 @@ import { createClient, SupabaseClient, User, Session } from '@supabase/supabase-
 // Récupération unifiée depuis le fichier .env (directement via SUPABASE_* ou VITE_SUPABASE_*)
 const env = (typeof import.meta !== 'undefined' ? (import.meta as any).env : {}) || {};
 const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseAnonKey =
+  env.SUPABASE_PUBLISHABLE_KEY ||
+  env.SUPABASE_ANON_KEY ||
+  env.VITE_SUPABASE_ANON_KEY ||
+  '';
 
 export let supabaseClient: SupabaseClient | null = null;
 

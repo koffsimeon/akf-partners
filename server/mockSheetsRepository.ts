@@ -12,6 +12,7 @@ import {
   SyncState,
   SystemConfig,
   SystemLog,
+  WaveConfig,
 } from "../src/types";
 import { EXPECTED_SHEETS_CONFIG } from "./googleSheetsService";
 import { ISheetsRepository } from "./sheetsRepository";
@@ -180,6 +181,66 @@ export class MockSheetsRepository implements ISheetsRepository {
 
   public async getProducts(): Promise<Product[]> {
     return [...this.products];
+  }
+
+  public async saveProduct(product: Product): Promise<Product> {
+    const existingIndex = this.products.findIndex((p) => p.id === product.id);
+    if (existingIndex >= 0) {
+      this.products[existingIndex] = { ...this.products[existingIndex], ...product };
+    } else {
+      this.products.push(product);
+    }
+    this.persist();
+    return product;
+  }
+
+  public async updateProduct(id: string, updates: Partial<Product>): Promise<Product> {
+    const p = this.products.find((item) => item.id === id);
+    if (!p) throw new Error(`Produit introuvable : ${id}`);
+    Object.assign(p, updates);
+    this.persist();
+    return p;
+  }
+
+  public async deleteProduct(id: string): Promise<boolean> {
+    const initialLen = this.products.length;
+    this.products = this.products.filter((p) => p.id !== id);
+    if (this.products.length !== initialLen) {
+      this.persist();
+      return true;
+    }
+    return false;
+  }
+
+  public async getWaves(): Promise<WaveConfig[]> {
+    return this.config.waves || [];
+  }
+
+  public async saveWave(wave: WaveConfig): Promise<WaveConfig> {
+    if (!this.config.waves) this.config.waves = [];
+    if (wave.active) {
+      this.config.waves.forEach((w) => {
+        w.active = false;
+      });
+    }
+    const idx = this.config.waves.findIndex((w) => w.wave.toLowerCase() === wave.wave.toLowerCase());
+    if (idx >= 0) {
+      this.config.waves[idx] = { ...this.config.waves[idx], ...wave };
+    } else {
+      this.config.waves.push(wave);
+    }
+    this.persist();
+    return wave;
+  }
+
+  public async setActiveWave(waveName: string): Promise<WaveConfig[]> {
+    if (!this.config.waves) return [];
+    this.config.waves = this.config.waves.map((w) => ({
+      ...w,
+      active: w.wave.toLowerCase() === waveName.toLowerCase(),
+    }));
+    this.persist();
+    return this.config.waves;
   }
 
   public async getOrders(): Promise<Order[]> {

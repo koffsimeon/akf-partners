@@ -12,6 +12,7 @@ import {
   SyncState,
   SystemConfig,
   SystemLog,
+  WaveConfig,
 } from '../src/types';
 import { EXPECTED_SHEETS_CONFIG } from './googleSheetsService';
 import { GoogleSheetsRepository } from './googleSheetsRepository';
@@ -40,6 +41,13 @@ export interface ISheetsRepository {
   deleteClient(id: string): Promise<boolean>;
 
   getProducts(): Promise<Product[]>;
+  saveProduct?(product: Product): Promise<Product>;
+  updateProduct?(id: string, updates: Partial<Product>): Promise<Product>;
+  deleteProduct?(id: string): Promise<boolean>;
+
+  getWaves?(): Promise<WaveConfig[]>;
+  saveWave?(wave: WaveConfig): Promise<WaveConfig>;
+  setActiveWave?(waveName: string): Promise<WaveConfig[]>;
 
   getOrders(): Promise<Order[]>;
   saveOrder(order: Order): Promise<Order>;
@@ -209,6 +217,36 @@ export class SwitchableSheetsRepository implements ISheetsRepository {
 
   public async getProducts(): Promise<Product[]> {
     return this.activeRepo.getProducts();
+  }
+
+  public async saveProduct(product: Product): Promise<Product> {
+    if (this.activeRepo.saveProduct) return this.activeRepo.saveProduct(product);
+    return this.mockRepo.saveProduct(product);
+  }
+
+  public async updateProduct(id: string, updates: Partial<Product>): Promise<Product> {
+    if (this.activeRepo.updateProduct) return this.activeRepo.updateProduct(id, updates);
+    return this.mockRepo.updateProduct(id, updates);
+  }
+
+  public async deleteProduct(id: string): Promise<boolean> {
+    if (this.activeRepo.deleteProduct) return this.activeRepo.deleteProduct(id);
+    return this.mockRepo.deleteProduct(id);
+  }
+
+  public async getWaves(): Promise<WaveConfig[]> {
+    if (this.activeRepo.getWaves) return this.activeRepo.getWaves();
+    return this.mockRepo.getWaves();
+  }
+
+  public async saveWave(wave: WaveConfig): Promise<WaveConfig> {
+    if (this.activeRepo.saveWave) return this.activeRepo.saveWave(wave);
+    return this.mockRepo.saveWave(wave);
+  }
+
+  public async setActiveWave(waveName: string): Promise<WaveConfig[]> {
+    if (this.activeRepo.setActiveWave) return this.activeRepo.setActiveWave(waveName);
+    return this.mockRepo.setActiveWave(waveName);
   }
 
   public async getOrders(): Promise<Order[]> {

@@ -628,6 +628,33 @@
   },
   "logs": [
     {
+      "id": "LOG018",
+      "timestamp": "2026-11-04T07:06:07.487Z",
+      "user": "admin@akfpartners.bj",
+      "actionType": "SYNC",
+      "description": "Synchronisation manuelle exécutée avec succès",
+      "oldValue": "EN_ATTENTE",
+      "newValue": "SYNCHRONISE"
+    },
+    {
+      "id": "LOG017",
+      "timestamp": "2026-11-04T06:25:29.858Z",
+      "user": "admin@akfpartners.bj",
+      "actionType": "SYNC",
+      "description": "Synchronisation manuelle exécutée avec succès",
+      "oldValue": "EN_ATTENTE",
+      "newValue": "SYNCHRONISE"
+    },
+    {
+      "id": "LOG016",
+      "timestamp": "2026-11-04T05:17:02.383Z",
+      "user": "admin@akfpartners.bj",
+      "actionType": "SYNC",
+      "description": "Synchronisation manuelle exécutée avec succès",
+      "oldValue": "EN_ATTENTE",
+      "newValue": "SYNCHRONISE"
+    },
+    {
       "id": "LOG015",
       "timestamp": "2026-09-17T14:14:14.189Z",
       "user": "admin@akfpartners.bj",
@@ -765,7 +792,7 @@
   ],
   "syncState": {
     "status": "SYNCHRONISE",
-    "lastSync": "2026-09-17T14:14:14.189Z",
+    "lastSync": "2026-11-04T07:06:07.487Z",
     "pendingCount": 0,
     "errors": []
   }

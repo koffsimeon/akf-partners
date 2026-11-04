@@ -110,17 +110,7 @@ export function AuthView({ onLoginSuccess }: AuthViewProps) {
             {/* Subtle Gradient & Culinary Glass Badge */}
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/15 to-transparent pointer-events-none" />
 
-            <div className="absolute bottom-5 left-5 right-5 p-4 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 text-white shadow-lg">
-              <div className="flex items-center gap-2 mb-1">
-                <Sparkles className="h-4 w-4 text-amber-300" />
-                <span className="text-[11px] font-black uppercase tracking-wider text-amber-200">
-                  All Koff's Food
-                </span>
-              </div>
-              <p className="text-xs font-medium text-slate-100 leading-snug">
-                Cockpit officiel du réseau de partenaires & suivi des commissions.
-              </p>
-            </div>
+            
           </div>
 
           {/* ========================================================================= */}
@@ -148,30 +138,7 @@ export function AuthView({ onLoginSuccess }: AuthViewProps) {
               </p>
             </div>
 
-            {/* Warning if .env is missing */}
-            {!isConfigured && (
-              <div className="rounded-2xl border border-amber-300/80 bg-amber-50 p-4 text-xs text-amber-950 space-y-2 animate-in fade-in">
-                <div className="flex items-center gap-2 font-bold text-amber-900">
-                  <ShieldAlert className="h-4 w-4 shrink-0 text-amber-600" />
-                  <span>Configuration Supabase requise (.env)</span>
-                </div>
-                <p className="text-[11px] text-amber-800 leading-relaxed">
-                  Renseignez vos clés dans le fichier <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold text-amber-950">.env</code> à la racine du projet :
-                </p>
-                <pre className="p-2 rounded-xl bg-slate-900 text-emerald-400 font-mono text-[10px] overflow-x-auto">
-{`SUPABASE_URL=https://votre-projet.supabase.co
-SUPABASE_ANON_KEY=votre_cle_anon`}
-                </pre>
-              </div>
-            )}
-
-            {/* Error Feedback */}
-            {feedback && (
-              <div className="rounded-2xl border border-rose-200 bg-rose-50 p-3.5 text-xs font-semibold text-rose-900 flex items-start gap-2.5 animate-in fade-in">
-                <AlertCircle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
-                <span>{feedback.message}</span>
-              </div>
-            )}
+            
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-4">

@@ -75,23 +75,28 @@ export interface ISheetsRepository {
 
 
 import { MockSheetsRepository } from "./mockSheetsRepository";
+import { SupabaseRepository } from "./supabaseRepository";
+import { isSupabaseConfigured } from "./supabaseClient";
 
 /**
  * REPOSITORY BASCULABLE (SwitchableSheetsRepository)
  * Permet de basculer en un clic entre :
- * 1. MOCK (Environnement de test/fallback)
- * 2. SHEETS_READONLY (Google Sheets authentique en lecture seule - Phase 4.1)
- * 3. SHEETS_LIVE (Google Sheets authentique en écriture contrôlée)
+ * 1. SUPABASE (Base PostgreSQL live connectée via .env)
+ * 2. MOCK (Environnement de test/fallback)
+ * 3. SHEETS_READONLY (Google Sheets authentique en lecture seule - Phase 4.1)
+ * 4. SHEETS_LIVE (Google Sheets authentique en écriture contrôlée)
  */
 export class SwitchableSheetsRepository implements ISheetsRepository {
   private mockRepo: MockSheetsRepository;
   private googleRepo: GoogleSheetsRepository;
+  private supabaseRepo: SupabaseRepository;
   private currentMode: DataSourceMode = 'SHEETS_LIVE';
   private connectionConfigPath = path.join(process.cwd(), '.data', 'sheets_connection.json');
 
   constructor() {
     this.mockRepo = new MockSheetsRepository();
     this.googleRepo = new GoogleSheetsRepository();
+    this.supabaseRepo = new SupabaseRepository();
     this.loadSavedConnection();
   }
 
@@ -143,6 +148,9 @@ export class SwitchableSheetsRepository implements ISheetsRepository {
   }
 
   private get activeRepo(): ISheetsRepository {
+    if (isSupabaseConfigured()) {
+      return this.supabaseRepo;
+    }
     if (this.currentMode === 'MOCK') {
       return this.mockRepo;
     }
@@ -158,6 +166,9 @@ export class SwitchableSheetsRepository implements ISheetsRepository {
   }
 
   public get dataSourceMode(): DataSourceMode {
+    if (isSupabaseConfigured()) {
+      return 'SHEETS_LIVE';
+    }
     return this.currentMode;
   }
 

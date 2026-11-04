@@ -60,6 +60,7 @@ export interface Partner {
   potentialRank?: Rank; // Grade maximal théorique atteint par les critères
   eligibleForPromotion?: boolean; // Éligibilité atteinte pour passage au grade supérieur
   commissionRate?: number; // Taux de commission de référence (ex: 0.06 pour Neo)
+  notes?: string;
 }
 
 export interface Client {

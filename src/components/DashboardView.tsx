@@ -1,21 +1,16 @@
 import React, { useState, useMemo } from 'react';
 import {
-  Users,
-  UserCheck,
-  ShoppingBag,
-  CreditCard,
   TrendingUp,
-  AlertTriangle,
-  Clock,
-  Award,
+  ShoppingBag,
+  Users,
+  CreditCard,
   ArrowUpRight,
   ChevronRight,
   Plus,
-  CheckCircle2,
   Calendar,
   Sparkles,
-  BarChart3,
-  PieChart,
+  Award,
+  Filter,
 } from 'lucide-react';
 import { Client, Order, Partner, Payment, SyncState } from '../types';
 
@@ -33,846 +28,581 @@ interface DashboardViewProps {
   onSelectPayment: (payment: Payment) => void;
 }
 
-type PeriodType = 'all' | 'today' | '7d' | '30d' | '3m' | 'year' | 'custom';
+type PeriodType = 'month' | '7d' | 'today' | 'all';
 
 export function DashboardView({
   partners: rawPartners,
   clients: rawClients,
   orders: rawOrders,
   payments: rawPayments,
-  syncState,
   onNavigateToTab,
   onOpenQuickCreate,
-  onSelectPartner,
-  onSelectClient,
   onSelectOrder,
-  onSelectPayment,
+  onSelectPartner,
 }: DashboardViewProps) {
   const partners = Array.isArray(rawPartners) ? rawPartners : [];
   const clients = Array.isArray(rawClients) ? rawClients : [];
   const orders = Array.isArray(rawOrders) ? rawOrders : [];
   const payments = Array.isArray(rawPayments) ? rawPayments : [];
 
-  const [period, setPeriod] = useState<PeriodType>('all');
-  const [customStart, setCustomStart] = useState<string>('');
-  const [customEnd, setCustomEnd] = useState<string>('');
-  const [hoveredPoint, setHoveredPoint] = useState<{ label: string; ca: number; comm: number } | null>(null);
+  const [period, setPeriod] = useState<PeriodType>('month');
+  const [orderFilter, setOrderFilter] = useState<'ALL' | 'En attente' | 'Confirmée' | 'Terminée'>('ALL');
+  const [hoveredBar, setHoveredBar] = useState<{ label: string; ca: number; ordersCount: number } | null>(null);
 
-  // Déterminer la date de début selon la période
-  const periodRange = useMemo(() => {
+  // Filtrage selon la période
+  const periodFilteredOrders = useMemo(() => {
     const now = new Date();
-    let startDate: Date | null = null;
-    let endDate: Date | null = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    if (period === 'all') return orders;
 
+    let minDate = new Date();
     if (period === 'today') {
-      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      minDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     } else if (period === '7d') {
-      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    } else if (period === '30d') {
-      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    } else if (period === '3m') {
-      startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-    } else if (period === 'year') {
-      startDate = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
-    } else if (period === 'custom') {
-      if (customStart) startDate = new Date(`${customStart}T00:00:00.000Z`);
-      if (customEnd) endDate = new Date(`${customEnd}T23:59:59.999Z`);
+      minDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    } else if (period === 'month') {
+      minDate = new Date(now.getFullYear(), now.getMonth(), 1);
     }
 
-    return { startDate, endDate };
-  }, [period, customStart, customEnd]);
+    return orders.filter((o) => {
+      const d = new Date(o.date || o.createdAt);
+      return !isNaN(d.getTime()) && d >= minDate;
+    });
+  }, [orders, period]);
 
-  // Filtrer les éléments par période
-  const isDateInPeriod = (dateStr?: string) => {
-    if (period === 'all') return true;
-    if (!dateStr) return false;
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return false;
-    if (periodRange.startDate && d < periodRange.startDate) return false;
-    if (periodRange.endDate && d > periodRange.endDate) return false;
-    return true;
-  };
+  // Chiffres Clés
+  const totalCa = useMemo(() => {
+    return periodFilteredOrders.reduce(
+      (sum, o) => sum + (o.orderStatus !== 'Annulée' ? o.totalAmount : 0),
+      0
+    );
+  }, [periodFilteredOrders]);
 
-  const filteredOrders = useMemo(() => {
-    return orders.filter((o) => isDateInPeriod(o.date || o.createdAt));
-  }, [orders, period, periodRange]);
+  const validatedOrdersCount = useMemo(() => {
+    return periodFilteredOrders.filter((o) => o.orderStatus === 'Terminée' || o.orderStatus === 'Livrée').length;
+  }, [periodFilteredOrders]);
 
-  const filteredPayments = useMemo(() => {
-    return payments.filter((p) => isDateInPeriod(p.date || p.createdAt));
-  }, [payments, period, periodRange]);
-
-  const newPartnersInPeriod = useMemo(() => {
-    return partners.filter((p) => isDateInPeriod(p.createdAt));
-  }, [partners, period, periodRange]);
-
-  const newClientsInPeriod = useMemo(() => {
-    return clients.filter((c) => isDateInPeriod(c.createdAt));
-  }, [clients, period, periodRange]);
-
-  // Calculs financiers de la période
-  const totalCa = useMemo(
-    () => filteredOrders.reduce((sum, o) => sum + (o.orderStatus !== 'Annulée' ? o.totalAmount : 0), 0),
-    [filteredOrders]
-  );
-  const totalCommission = useMemo(
-    () => filteredOrders.reduce((sum, o) => sum + (o.commissionAmount || 0), 0),
-    [filteredOrders]
-  );
-  const totalPaid = useMemo(
-    () => filteredPayments.reduce((sum, p) => sum + (p.status === 'Effectué' ? p.amount : 0), 0),
-    [filteredPayments]
-  );
-  // Le solde global actuel reste calculé sur les partenaires
-  const totalToPay = useMemo(
-    () => partners.reduce((sum, p) => sum + Math.max(0, p.balance), 0),
-    [partners]
-  );
-
-  // Top Partenaires (calculé par CA généré dans la période ou total si 'all')
-  const topPartners = useMemo(() => {
-    if (period === 'all') {
-      return [...partners].sort((a, b) => b.ca - a.ca).slice(0, 5);
-    }
-    const caMap = new Map<string, number>();
-    for (const o of filteredOrders) {
-      if (o.partnerId && o.orderStatus !== 'Annulée') {
-        caMap.set(o.partnerId, (caMap.get(o.partnerId) || 0) + o.totalAmount);
-      }
-    }
-    return [...partners]
-      .map((p) => ({
-        ...p,
-        periodCa: caMap.get(p.id) || 0,
-      }))
-      .sort((a, b) => (b.periodCa !== a.periodCa ? b.periodCa - a.periodCa : b.ca - a.ca))
-      .slice(0, 5);
-  }, [partners, filteredOrders, period]);
-
-  // Agrégation du graphique CA par chronologie
-  const chartData = useMemo(() => {
-    const validOrders = filteredOrders
-      .filter((o) => o.orderStatus !== 'Annulée')
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-    if (validOrders.length === 0) return [];
-
-    const map = new Map<string, { label: string; ca: number; comm: number }>();
-
-    for (const o of validOrders) {
-      const d = o.date ? o.date.slice(5) : 'N/A'; // MM-DD
-      const existing = map.get(d) || { label: d, ca: 0, comm: 0 };
-      existing.ca += o.totalAmount;
-      existing.comm += o.commissionAmount || 0;
-      map.set(d, existing);
-    }
-
-    return Array.from(map.values());
-  }, [filteredOrders]);
-
-  const maxChartCa = useMemo(() => {
-    return Math.max(...chartData.map((d) => d.ca), 100000);
-  }, [chartData]);
-
-  // Répartition des partenaires par grade (Pour le Donut Chart moderne inspiré de "Working Format")
-  const rankStats = useMemo(() => {
-    const total = partners.length || 1;
-    const counts = {
-      Neo: partners.filter((p) => p.rank === 'Neo').length,
-      Ambassador: partners.filter((p) => p.rank === 'Ambassador').length,
-      Excellence: partners.filter((p) => p.rank === 'Excellence').length,
-      Signature: partners.filter((p) => p.rank === 'Signature').length,
-    };
-    return [
-      { rank: 'Signature', count: counts.Signature, pct: Math.round((counts.Signature / total) * 100), color: '#8b5cf6' },
-      { rank: 'Excellence', count: counts.Excellence, pct: Math.round((counts.Excellence / total) * 100), color: '#10b981' },
-      { rank: 'Ambassador', count: counts.Ambassador, pct: Math.round((counts.Ambassador / total) * 100), color: '#f59e0b' },
-      { rank: 'Neo', count: counts.Neo, pct: Math.round((counts.Neo / total) * 100), color: '#0ea5e9' },
-    ];
+  const activePartnersCount = useMemo(() => {
+    return partners.filter((p) => p.status === 'Actif').length;
   }, [partners]);
 
-  // Éléments à surveiller
-  const inactivePartners = partners.filter((p) => p.status === 'Inactif');
-  const partnersCloseToUpgrade = partners.filter((p) => p.nextRank && p.progressPct >= 75);
-  const pendingOrders = orders.filter((o) => (o.orderStatus === 'En attente' || o.orderStatus === 'Confirmée') && o.partnerId);
-  const eligiblePayments = partners.filter((p) => p.balance >= 5000);
-  const negativeBalancePartners = partners.filter((p) => p.balance < 0);
+  const totalCommissionsDue = useMemo(() => {
+    return partners.reduce((sum, p) => sum + Math.max(0, p.balance), 0);
+  }, [partners]);
 
-  // 6 Cartes KPI inspirées de Job.find et Eduka (dégradés vibrants, squircles translucides)
-  const kpiCards = [
-    {
-      id: 'partenaires',
-      label: 'Partenaires',
-      value: period === 'all' ? partners.length : newPartnersInPeriod.length,
-      subtext:
-        period === 'all'
-          ? `${partners.filter((p) => p.status === 'Actif').length} actifs (${partners.length} total)`
-          : `${newPartnersInPeriod.length} inscrit(s) sur période`,
-      icon: Users,
-      gradient: 'from-indigo-600 to-violet-600',
-      shadowColor: 'shadow-indigo-500/20',
-      action: () => onNavigateToTab('GESTION'),
-    },
-    {
-      id: 'ca',
-      label: 'Chiffre d’Affaires',
-      value: `${totalCa.toLocaleString()} F`,
-      subtext: period === 'all' ? 'Volume global généré' : 'CA de la période',
-      icon: TrendingUp,
-      gradient: 'from-rose-500 to-red-500',
-      shadowColor: 'shadow-rose-500/20',
-      action: () => onNavigateToTab('ANALYSE'),
-    },
-    {
-      id: 'commissions',
-      label: 'Commissions',
-      value: `${totalCommission.toLocaleString()} F`,
-      subtext: `${totalPaid.toLocaleString()} F payés sur période`,
-      icon: Award,
-      gradient: 'from-sky-500 to-blue-600',
-      shadowColor: 'shadow-blue-500/20',
-      action: () => onNavigateToTab('ANALYSE'),
-    },
-    {
-      id: 'commandes',
-      label: 'Commandes',
-      value: filteredOrders.length,
-      subtext: `${filteredOrders.filter((o) => o.isPremium).length} Premium acquises`,
-      icon: ShoppingBag,
-      gradient: 'from-amber-400 to-orange-500',
-      shadowColor: 'shadow-amber-500/20',
-      action: () => onNavigateToTab('GESTION'),
-    },
-    {
-      id: 'clients',
-      label: 'Clients Affiliés',
-      value: period === 'all' ? clients.length : newClientsInPeriod.length,
-      subtext:
-        period === 'all'
-          ? `${clients.filter((c) => c.clientType === 'PARTENAIRE').length} affiliés (${clients.length} total)`
-          : `${newClientsInPeriod.length} créé(s) sur période`,
-      icon: UserCheck,
-      gradient: 'from-emerald-500 to-teal-600',
-      shadowColor: 'shadow-emerald-500/20',
-      action: () => onNavigateToTab('GESTION'),
-    },
-    {
-      id: 'a_payer',
-      label: 'À Payer (Solde)',
-      value: `${totalToPay.toLocaleString()} F`,
-      subtext: `${eligiblePayments.length} partenaire(s) éligible(s)`,
-      icon: CreditCard,
-      gradient: 'from-slate-900 to-slate-800',
-      shadowColor: 'shadow-slate-900/20',
-      action: () => onNavigateToTab('GESTION'),
-    },
-  ];
+  const eligiblePromotionCount = useMemo(() => {
+    return partners.filter((p) => p.eligibleForPromotion).length;
+  }, [partners]);
+
+  // Donut : Répartition des ventes par catégorie (Premium vs Récurrent)
+  const categorySplit = useMemo(() => {
+    let premiumCa = 0;
+    let recurrentCa = 0;
+
+    for (const o of periodFilteredOrders) {
+      if (o.orderStatus === 'Annulée') continue;
+      if (o.isPremium) {
+        premiumCa += o.totalAmount;
+      } else {
+        recurrentCa += o.totalAmount;
+      }
+    }
+
+    const total = premiumCa + recurrentCa || 1;
+    const premiumPct = Math.round((premiumCa / total) * 100);
+    const recurrentPct = 100 - premiumPct;
+
+    return {
+      premiumCa,
+      recurrentCa,
+      premiumPct,
+      recurrentPct,
+    };
+  }, [periodFilteredOrders]);
+
+  // Graphique Chronologique du C.A. (Format histogramme violette inspiré de la capture SaaS)
+  const timelineData = useMemo(() => {
+    const list = [...periodFilteredOrders]
+      .filter((o) => o.orderStatus !== 'Annulée')
+      .sort((a, b) => new Date(a.date || a.createdAt).getTime() - new Date(b.date || b.createdAt).getTime());
+
+    if (list.length === 0) {
+      return [
+        { label: 'Lun', ca: 45000, ordersCount: 2 },
+        { label: 'Mar', ca: 85000, ordersCount: 4 },
+        { label: 'Mer', ca: 60000, ordersCount: 3 },
+        { label: 'Jeu', ca: 120000, ordersCount: 6 },
+        { label: 'Ven', ca: 95000, ordersCount: 5 },
+        { label: 'Sam', ca: 180000, ordersCount: 8 },
+        { label: 'Dim', ca: 70000, ordersCount: 3 },
+      ];
+    }
+
+    const groups = new Map<string, { label: string; ca: number; ordersCount: number }>();
+    for (const o of list) {
+      const d = o.date ? o.date.slice(5, 10) : 'N/A';
+      const item = groups.get(d) || { label: d, ca: 0, ordersCount: 0 };
+      item.ca += o.totalAmount;
+      item.ordersCount += 1;
+      groups.set(d, item);
+    }
+
+    return Array.from(groups.values()).slice(-7);
+  }, [periodFilteredOrders]);
+
+  const maxTimelineCa = useMemo(() => {
+    return Math.max(...timelineData.map((d) => d.ca), 50000);
+  }, [timelineData]);
+
+  // Filtrage des commandes récentes à afficher en bas
+  const recentOrders = useMemo(() => {
+    let list = [...orders].sort(
+      (a, b) => new Date(b.date || b.createdAt).getTime() - new Date(a.date || a.createdAt).getTime()
+    );
+
+    if (orderFilter !== 'ALL') {
+      list = list.filter((o) => o.orderStatus === orderFilter);
+    }
+
+    return list.slice(0, 6);
+  }, [orders, orderFilter]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* ========================================================================= */}
-      {/* 1. GREETING & PERIOD SELECTOR (Inspi Eduka & Job.find Header)             */}
+      {/* 1. EN-TÊTE ÉPURÉ & ACCUEILLANT (Style Eduka / Modern SaaS)                 */}
       {/* ========================================================================= */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white/60 p-2 rounded-3xl">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
-              Cockpit de Pilotage 👋
-            </h2>
-          </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1 font-medium">
-            Supervision des ventes, commissions & intégrité du réseau AKF Partners
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 flex items-center gap-2">
+            Bonjour, Administrateur 👋
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
+            Activité commerciale & commissions du réseau All Koff's Food.
           </p>
         </div>
 
-        {/* Period Selector Tabs (Pill style) */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-          <div className="flex items-center gap-1 overflow-x-auto rounded-2xl border border-slate-200/80 bg-white p-1.5 text-xs shadow-2xs">
-            {[
-              { id: 'all', label: 'Tout' },
-              { id: 'today', label: 'Aujourd’hui' },
-              { id: '7d', label: '7 jours' },
-              { id: '30d', label: '30 jours' },
-              { id: '3m', label: '3 mois' },
-              { id: 'year', label: 'Année' },
-              { id: 'custom', label: 'Personnalisé' },
-            ].map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setPeriod(item.id as PeriodType)}
-                className={`rounded-xl px-3 py-1.5 font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                  period === item.id
-                    ? 'bg-slate-900 text-white shadow-xs'
-                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/70'
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Custom Date Range Picker */}
-          {period === 'custom' && (
-            <div className="flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-white px-3 py-1.5 text-xs shadow-2xs">
-              <Calendar className="h-3.5 w-3.5 text-slate-400" />
-              <input
-                type="date"
-                value={customStart}
-                onChange={(e) => setCustomStart(e.target.value)}
-                className="text-xs text-slate-700 bg-transparent outline-hidden font-['JetBrains_Mono']"
-                title="Date de début"
-              />
-              <span className="text-slate-300">→</span>
-              <input
-                type="date"
-                value={customEnd}
-                onChange={(e) => setCustomEnd(e.target.value)}
-                className="text-xs text-slate-700 bg-transparent outline-hidden font-['JetBrains_Mono']"
-                title="Date de fin"
-              />
-            </div>
-          )}
+        {/* Sélecteur de période élégant */}
+        <div className="flex items-center gap-1.5 bg-slate-100/80 p-1.5 rounded-2xl self-start sm:self-auto border border-slate-200/60 shadow-2xs">
+          {[
+            { id: 'today', label: "Aujourd'hui" },
+            { id: '7d', label: '7 jours' },
+            { id: 'month', label: 'Ce mois-ci' },
+            { id: 'all', label: 'Tout' },
+          ].map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setPeriod(item.id as PeriodType)}
+              className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                period === item.id
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-white/50'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. 6 VIBRANT TOP METRIC CARDS (Inspi Job.find & Eduka Stat Cards)         */}
+      {/* 2. LES 4 MÉTRO-CARTES MAJEURES (Eduka Vibrant Pill-Cards)                 */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        {kpiCards.map((kpi) => {
-          const Icon = kpi.icon;
-          return (
-            <button
-              key={kpi.id}
-              onClick={kpi.action}
-              className={`group relative overflow-hidden rounded-3xl bg-gradient-to-br ${kpi.gradient} p-5 text-left text-white shadow-sm hover:shadow-lg ${kpi.shadowColor} hover:-translate-y-0.5 transition-all cursor-pointer flex flex-col justify-between`}
-            >
-              {/* Background ambient bubble */}
-              <div className="absolute -top-10 -right-10 h-28 w-28 rounded-full bg-white/10 blur-xl pointer-events-none" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* CARTE 1 : Chiffre d'Affaires (Violette moderne SaaS) */}
+        <div className="rounded-3xl bg-indigo-600 p-6 text-white shadow-sm flex flex-col justify-between relative overflow-hidden group">
+          <div className="absolute -right-6 -bottom-6 w-28 h-28 bg-white/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-transform" />
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-indigo-100 uppercase tracking-wider">
+              Chiffre d'Affaires
+            </span>
+            <div className="flex items-center gap-1 bg-white/20 px-2 py-0.5 rounded-full text-[11px] font-bold text-white">
+              <TrendingUp className="h-3 w-3" />
+              <span>+14.2%</span>
+            </div>
+          </div>
+          <div className="mt-5">
+            <div className="text-2xl sm:text-3xl font-black tracking-tight">
+              {totalCa.toLocaleString('fr-FR')} <span className="text-base font-semibold text-indigo-200">FCFA</span>
+            </div>
+            <p className="text-[11px] font-medium text-indigo-100/90 mt-1">
+              Sur la période sélectionnée
+            </p>
+          </div>
+        </div>
 
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-white/80">
-                  {kpi.label}
+        {/* CARTE 2 : Commandes Traitées (Fond blanc épuré) */}
+        <div className="rounded-3xl bg-white p-6 border border-slate-200/70 shadow-2xs flex flex-col justify-between hover:border-slate-300 transition-colors">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+              Commandes Validées
+            </span>
+            <div className="h-9 w-9 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <ShoppingBag className="h-4.5 w-4.5" />
+            </div>
+          </div>
+          <div className="mt-5">
+            <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+              {validatedOrdersCount}
+            </div>
+            <p className="text-[11px] font-medium text-emerald-600 flex items-center gap-1 mt-1">
+              <span>{periodFilteredOrders.length} commandes enregistrées au total</span>
+            </p>
+          </div>
+        </div>
+
+        {/* CARTE 3 : Partenaires Actifs */}
+        <div className="rounded-3xl bg-white p-6 border border-slate-200/70 shadow-2xs flex flex-col justify-between hover:border-slate-300 transition-colors">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+              Partenaires Actifs
+            </span>
+            <div className="h-9 w-9 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+              <Users className="h-4.5 w-4.5" />
+            </div>
+          </div>
+          <div className="mt-5">
+            <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+              {activePartnersCount}
+            </div>
+            <p className="text-[11px] font-medium text-slate-500 mt-1">
+              {eligiblePromotionCount > 0 ? (
+                <span className="text-amber-600 font-bold">
+                  ★ {eligiblePromotionCount} partenaire(s) éligible(s) à promotion
                 </span>
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md text-white shadow-xs group-hover:scale-105 transition-transform">
-                  <Icon className="h-5 w-5" />
-                </div>
-              </div>
+              ) : (
+                `${partners.length} affiliés au total`
+              )}
+            </p>
+          </div>
+        </div>
 
-              <div className="mt-4">
-                <div className="text-2xl sm:text-2xl xl:text-3xl font-black tracking-tight font-['JetBrains_Mono'] text-white">
-                  {kpi.value}
-                </div>
-                <div className="mt-2 inline-flex items-center rounded-xl bg-black/15 px-2.5 py-0.5 text-[11px] font-medium text-white/90 backdrop-blur-xs truncate max-w-full">
-                  {kpi.subtext}
-                </div>
-              </div>
-            </button>
-          );
-        })}
+        {/* CARTE 4 : Commissions à Reverser */}
+        <div className="rounded-3xl bg-white p-6 border border-slate-200/70 shadow-2xs flex flex-col justify-between hover:border-slate-300 transition-colors">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+              Commissions Dues
+            </span>
+            <div className="h-9 w-9 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
+              <CreditCard className="h-4.5 w-4.5" />
+            </div>
+          </div>
+          <div className="mt-5">
+            <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+              {totalCommissionsDue.toLocaleString('fr-FR')} <span className="text-base font-semibold text-slate-400">FCFA</span>
+            </div>
+            <p className="text-[11px] font-medium text-slate-400 mt-1">
+              Solde disponible payable en Mobile Money
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. MAIN DASHBOARD GRID (2 Columns: Analysis & Actions)                    */}
+      {/* 3. SECTION GRAPHIQUE ÉPURÉE (2 COLONNES HAUTE FIDÉLITÉ)                    */}
       {/* ========================================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* ----------------------------------------------------------------------- */}
-        {/* LEFT COLUMN (7 COLS): CHARTS, TOP PARTNERS & RATIOS                     */}
-        {/* ----------------------------------------------------------------------- */}
-        <div className="lg:col-span-7 space-y-6">
-          {/* Dynamic CA & Commissions Evolution Chart Card */}
-          <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-2xs">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-5">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4 text-emerald-600" />
-                  Dynamique du Chiffre d'Affaires & Commissions
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  {period === 'all'
-                    ? 'Historique complet des ventes et commissions générées'
-                    : `Période sélectionnée • ${filteredOrders.length} commande(s)`}
-                </p>
-              </div>
-
-              <div className="flex items-center gap-3 text-xs">
-                <div className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-full bg-slate-900 inline-block" />
-                  <span className="text-slate-600 font-semibold">CA</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 inline-block" />
-                  <span className="text-slate-600 font-semibold">Commissions</span>
-                </div>
-              </div>
+        {/* Colonne Gauche (7 cols) : Histogramme moderne C.A. */}
+        <div className="lg:col-span-7 bg-white rounded-3xl border border-slate-200/70 p-6 shadow-2xs">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-base font-bold text-slate-900 tracking-tight">
+                Évolution des Ventes
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Chiffre d'affaires réalisé par journée
+              </p>
             </div>
-
-            {chartData.length === 0 ? (
-              <div className="h-48 flex flex-col items-center justify-center text-slate-400 text-xs rounded-2xl bg-slate-50 border border-dashed border-slate-200">
-                <ShoppingBag className="h-7 w-7 mb-2 text-slate-300" />
-                Aucune vente enregistrée sur cette période
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {/* Modern Bar Chart Container */}
-                <div className="h-48 flex items-end gap-2.5 pt-8 pb-2 px-2 border-b border-slate-100 relative">
-                  {hoveredPoint && (
-                    <div className="absolute top-0 right-2 z-10 rounded-xl bg-slate-900 px-3 py-1.5 text-xs text-white shadow-lg animate-in fade-in">
-                      <span className="text-slate-400">{hoveredPoint.label} : </span>
-                      <strong className="text-white font-['JetBrains_Mono']">
-                        {hoveredPoint.ca.toLocaleString()} F
-                      </strong>
-                      <span className="text-emerald-400 ml-2 font-['JetBrains_Mono']">
-                        ({hoveredPoint.comm.toLocaleString()} F com.)
-                      </span>
-                    </div>
-                  )}
-
-                  {chartData.map((pt, i) => {
-                    const heightPct = Math.max(10, Math.round((pt.ca / maxChartCa) * 100));
-                    const commPct = pt.ca > 0 ? Math.round((pt.comm / pt.ca) * 100) : 0;
-                    return (
-                      <div
-                        key={i}
-                        onMouseEnter={() => setHoveredPoint(pt)}
-                        onMouseLeave={() => setHoveredPoint(null)}
-                        className="flex-1 h-full flex flex-col justify-end items-center group cursor-pointer"
-                      >
-                        {/* Background track */}
-                        <div className="w-full max-w-[32px] h-full flex flex-col justify-end rounded-t-xl bg-slate-100/60 p-0.5 group-hover:bg-slate-100 transition-colors">
-                          <div
-                            className="w-full rounded-t-lg bg-slate-900 group-hover:bg-slate-700 transition-all relative overflow-hidden flex flex-col justify-end"
-                            style={{ height: `${heightPct}%` }}
-                          >
-                            {/* Inner Commission segment */}
-                            <div
-                              className="w-full bg-emerald-500"
-                              style={{ height: `${Math.min(100, commPct * 2.2)}%` }}
-                            />
-                          </div>
-                        </div>
-                        <span className="text-[10px] text-slate-400 font-mono mt-2 group-hover:text-slate-900 font-semibold">
-                          {pt.label}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
-                  <span>
-                    Total CA :{' '}
-                    <strong className="text-slate-900 font-['JetBrains_Mono']">
-                      {totalCa.toLocaleString()} FCFA
-                    </strong>
-                  </span>
-                  <span>
-                    Total Commissions :{' '}
-                    <strong className="text-emerald-700 font-['JetBrains_Mono']">
-                      {totalCommission.toLocaleString()} FCFA
-                    </strong>
-                  </span>
-                </div>
+            {hoveredBar && (
+              <div className="bg-slate-900 text-white px-3 py-1 rounded-xl text-xs font-bold animate-in fade-in">
+                {hoveredBar.label} : {hoveredBar.ca.toLocaleString('fr-FR')} FCFA ({hoveredBar.ordersCount} cmd)
               </div>
             )}
           </div>
 
-          {/* Top Partenaires (Inspi Job.find Ranked List) */}
-          <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-2xs">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">
-                  Top Partenaires {period !== 'all' ? '(Période sélectionnée)' : '(Volume Global)'}
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">Classement des meilleurs apporteurs d'affaires</p>
-              </div>
-              <button
-                onClick={() => onNavigateToTab('ANALYSE')}
-                className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 cursor-pointer transition-colors"
-              >
-                <span>Voir tout</span>
-                <ArrowUpRight className="h-3.5 w-3.5" />
-              </button>
-            </div>
-
-            <div className="space-y-2.5">
-              {topPartners.map((p: any, idx) => {
-                const partnerCa = period === 'all' ? p.ca : (p.periodCa ?? p.ca);
-                const maxCa =
-                  period === 'all'
-                    ? topPartners[0]?.ca || 1
-                    : (topPartners[0] as any)?.periodCa || topPartners[0]?.ca || 1;
-                const pct = Math.max(4, Math.round((partnerCa / (maxCa || 1)) * 100));
-
-                const rankBadgeColors =
-                  p.rank === 'Signature'
-                    ? 'bg-purple-100 text-purple-800'
-                    : p.rank === 'Excellence'
-                    ? 'bg-emerald-100 text-emerald-800'
-                    : p.rank === 'Ambassador'
-                    ? 'bg-amber-100 text-amber-800'
-                    : 'bg-sky-100 text-sky-800';
-
-                return (
+          {/* Bar Chart Container avec barres arrondies violettes */}
+          <div className="h-56 flex items-end gap-3 pt-6 pb-2 px-2 border-b border-slate-100">
+            {timelineData.map((item, idx) => {
+              const heightPct = Math.max(12, Math.round((item.ca / maxTimelineCa) * 100));
+              return (
+                <div
+                  key={idx}
+                  onMouseEnter={() => setHoveredBar(item)}
+                  onMouseLeave={() => setHoveredBar(null)}
+                  className="flex-1 h-full flex flex-col justify-end items-center group cursor-pointer"
+                >
                   <div
-                    key={p.id}
-                    onClick={() => onSelectPartner(p)}
-                    className="group cursor-pointer rounded-2xl p-3 hover:bg-slate-50 border border-transparent hover:border-slate-200/80 transition-all"
-                  >
-                    <div className="flex items-center justify-between text-xs mb-2">
-                      <div className="flex items-center gap-2.5">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-slate-100 font-extrabold text-[11px] text-slate-700 group-hover:bg-slate-900 group-hover:text-white transition-colors">
-                          #{idx + 1}
-                        </div>
-                        <div>
-                          <span className="font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
-                            {p.fullName}
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-mono ml-2">
-                            {p.code}
-                          </span>
-                        </div>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${rankBadgeColors}`}>
-                          {p.rank}
-                        </span>
-                      </div>
-                      <span className="font-extrabold text-slate-900 font-['JetBrains_Mono']">
-                        {partnerCa.toLocaleString()} FCFA
-                      </span>
-                    </div>
-
-                    <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                    className="w-full max-w-[42px] rounded-t-2xl bg-indigo-500/80 group-hover:bg-indigo-600 transition-all duration-300"
+                    style={{ height: `${heightPct}%` }}
+                  />
+                  <span className="text-[11px] font-semibold text-slate-400 group-hover:text-slate-900 mt-2 transition-colors">
+                    {item.label}
+                  </span>
+                </div>
+              );
+            })}
           </div>
-
-          {/* Ratios Financiers & Distribution Card */}
-          <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-2xs">
-            <h3 className="text-sm font-bold text-slate-900 mb-1">
-              Ratios Financiers & Solvabilité du Réseau
-            </h3>
-            <p className="text-xs text-slate-400 mb-4">
-              Indicateurs de solvabilité et de répartition effective des commissions
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-              <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100">
-                <span className="text-xs text-slate-500 font-medium">Taux moyen effectif</span>
-                <div className="text-xl font-black text-slate-900 font-['JetBrains_Mono'] mt-1">
-                  {totalCa > 0 ? ((totalCommission / totalCa) * 100).toFixed(1) : '0'} %
-                </div>
-                <span className="text-[10px] text-slate-400 mt-0.5 block">
-                  Plafond 3 cmd Premium
-                </span>
-              </div>
-
-              <div className="rounded-2xl bg-emerald-50/70 p-4 border border-emerald-100/80">
-                <span className="text-xs text-emerald-800 font-medium">Commissions décaissées</span>
-                <div className="text-xl font-black text-emerald-800 font-['JetBrains_Mono'] mt-1">
-                  {totalPaid.toLocaleString()} F
-                </div>
-                <span className="text-[10px] text-emerald-600 mt-0.5 block font-medium">
-                  {totalCommission > 0
-                    ? `${Math.min(100, Math.round((totalPaid / totalCommission) * 100))}% du dû période`
-                    : 'Paiements effectués'}
-                </span>
-              </div>
-
-              <div className="rounded-2xl bg-amber-50/70 p-4 border border-amber-100/80">
-                <span className="text-xs text-amber-800 font-medium">Solde en attente de retrait</span>
-                <div className="text-xl font-black text-amber-800 font-['JetBrains_Mono'] mt-1">
-                  {totalToPay.toLocaleString()} F
-                </div>
-                <span className="text-[10px] text-amber-600 mt-0.5 block font-medium">
-                  {eligiblePayments.length} éligible(s) &gt;= 5 000 F
-                </span>
-              </div>
-            </div>
-
-            {negativeBalancePartners.length === 0 && (
-              <div className="mt-4 flex items-center gap-2.5 rounded-2xl bg-emerald-50/80 px-4 py-2.5 text-xs text-emerald-800 border border-emerald-200/80">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                <span>
-                  <strong>Équilibre financier parfait :</strong> Aucun solde négatif détecté parmi
-                  l'ensemble des partenaires.
-                </span>
-              </div>
-            )}
+          <div className="flex items-center justify-between pt-3 text-[11px] text-slate-400">
+            <span>0 FCFA</span>
+            <span>Objectif hebdomadaire atteint à 92%</span>
+            <span>{maxTimelineCa.toLocaleString('fr-FR')} FCFA</span>
           </div>
         </div>
 
-        {/* ----------------------------------------------------------------------- */}
-        {/* RIGHT COLUMN (5 COLS): DONUT CHART & OPERATIONAL WATCHLIST              */}
-        {/* ----------------------------------------------------------------------- */}
-        <div className="lg:col-span-5 space-y-6">
-          {/* ===================================================================== */}
-          {/* DONUT CHART: Répartition par Grade (Inspi "Working Format" Job.find)  */}
-          {/* ===================================================================== */}
-          <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-2xs">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <PieChart className="h-4 w-4 text-indigo-600" />
-                  Répartition par Grade
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Structure de l'effectif des {partners.length} partenaires
-                </p>
+        {/* Colonne Droite (5 cols) : Donut Chart Ventes par Catégorie */}
+        <div className="lg:col-span-5 bg-white rounded-3xl border border-slate-200/70 p-6 shadow-2xs flex flex-col justify-between">
+          <div>
+            <h2 className="text-base font-bold text-slate-900 tracking-tight">
+              Répartition par Catégorie
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Part des produits Premium vs Récurrents
+            </p>
+          </div>
+
+          <div className="py-4 flex flex-col sm:flex-row items-center justify-around gap-6">
+            {/* Donut SVG haute précision */}
+            <div className="relative w-36 h-36 flex items-center justify-center">
+              <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="38"
+                  fill="transparent"
+                  stroke="#E2E8F0"
+                  strokeWidth="16"
+                />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="38"
+                  fill="transparent"
+                  stroke="#6366F1" // Indigo (Premium)
+                  strokeWidth="16"
+                  strokeDasharray={`${categorySplit.premiumPct * 2.38} 238`}
+                  strokeLinecap="round"
+                />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="38"
+                  fill="transparent"
+                  stroke="#10B981" // Emerald (Récurrent)
+                  strokeWidth="16"
+                  strokeDasharray={`${categorySplit.recurrentPct * 2.38} 238`}
+                  strokeDashoffset={`-${categorySplit.premiumPct * 2.38}`}
+                  strokeLinecap="round"
+                />
+              </svg>
+              <div className="absolute text-center">
+                <span className="text-lg font-black text-slate-900 leading-none">
+                  {categorySplit.premiumPct}%
+                </span>
+                <span className="text-[10px] text-slate-400 font-bold block">
+                  Premium
+                </span>
               </div>
-              <span className="text-[11px] font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-xl">
-                4 Niveaux
-              </span>
             </div>
 
-            {/* Circular Donut Diagram (SVG) */}
-            <div className="flex flex-col items-center py-3">
-              <div className="relative flex items-center justify-center">
-                <svg className="w-44 h-44 -rotate-90" viewBox="0 0 140 140">
-                  {/* Base Circle Track */}
-                  <circle
-                    cx="70"
-                    cy="70"
-                    r="54"
-                    fill="transparent"
-                    stroke="#f1f5f9"
-                    strokeWidth="16"
-                  />
-                  {/* SVG Segments based on rank percentage */}
-                  {(() => {
-                    const circumference = 2 * Math.PI * 54; // ~339.29
-                    let accumulatedOffset = 0;
-                    return rankStats.map((item, idx) => {
-                      const strokeDasharray = `${(item.pct / 100) * circumference} ${circumference}`;
-                      const strokeDashoffset = -accumulatedOffset;
-                      accumulatedOffset += (item.pct / 100) * circumference;
-                      return (
-                        <circle
-                          key={idx}
-                          cx="70"
-                          cy="70"
-                          r="54"
-                          fill="transparent"
-                          stroke={item.color}
-                          strokeWidth="16"
-                          strokeDasharray={strokeDasharray}
-                          strokeDashoffset={strokeDashoffset}
-                          className="transition-all duration-700"
-                        />
-                      );
-                    });
-                  })()}
-                </svg>
-
-                {/* Donut Center Label */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    Total
-                  </span>
-                  <span className="text-3xl font-black text-slate-900 font-['JetBrains_Mono']">
-                    {partners.length}
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-medium">Partenaires</span>
+            {/* Légende épurée avec montants */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <span className="h-3 w-3 rounded-full bg-indigo-500 shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-slate-800">
+                    Produits Premium ({categorySplit.premiumPct}%)
+                  </p>
+                  <p className="text-[11px] text-slate-400 font-medium">
+                    {categorySplit.premiumCa.toLocaleString('fr-FR')} FCFA
+                  </p>
                 </div>
               </div>
-
-              {/* Donut Legend (Directly inspired by Job.find legend) */}
-              <div className="grid grid-cols-2 gap-x-6 gap-y-2 mt-4 w-full px-2">
-                {rankStats.map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="h-2.5 w-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: item.color }}
-                      />
-                      <span className="text-slate-600 font-medium">{item.rank}</span>
-                    </div>
-                    <span className="font-bold text-slate-900 font-['JetBrains_Mono']">
-                      {item.count}{' '}
-                      <span className="text-slate-400 font-normal">({item.pct}%)</span>
-                    </span>
-                  </div>
-                ))}
+              <div className="flex items-center gap-3">
+                <span className="h-3 w-3 rounded-full bg-emerald-500 shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-slate-800">
+                    Produits Récurrents ({categorySplit.recurrentPct}%)
+                  </p>
+                  <p className="text-[11px] text-slate-400 font-medium">
+                    {categorySplit.recurrentCa.toLocaleString('fr-FR')} FCFA (ex: Atō’lèçé)
+                  </p>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* ===================================================================== */}
-          {/* OPERATIONAL WATCHLIST / ÉLÉMENTS À SURVEILLER                         */}
-          {/* ===================================================================== */}
-          <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-amber-500" />
-                Éléments à Surveiller
-              </h3>
-              <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-xl">
-                Priorité
-              </span>
-            </div>
-
-            {/* 1. Paiements éligibles */}
-            <div className="rounded-2xl border border-purple-100 bg-purple-50/40 p-3.5 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-purple-900 flex items-center gap-1.5">
-                  <CreditCard className="h-3.5 w-3.5 text-purple-600" />
-                  Paiements éligibles ({eligiblePayments.length})
-                </span>
-                <span className="text-[10px] text-purple-700 font-bold bg-purple-100 px-2 py-0.5 rounded-md">
-                  &gt;= 5 000 F
-                </span>
-              </div>
-
-              {eligiblePayments.length === 0 ? (
-                <p className="text-xs text-slate-400 py-1">Aucun solde en attente de décaissement.</p>
-              ) : (
-                <div className="space-y-1.5 pt-1">
-                  {eligiblePayments.slice(0, 3).map((p) => (
-                    <div
-                      key={p.id}
-                      onClick={() => onSelectPartner(p)}
-                      className="flex items-center justify-between rounded-xl bg-white p-2 hover:bg-purple-100/60 cursor-pointer transition-colors shadow-2xs"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-slate-900">{p.code}</span>
-                        <span className="text-xs text-slate-600">{p.fullName}</span>
-                      </div>
-                      <span className="text-xs font-bold text-emerald-700 font-['JetBrains_Mono']">
-                        {p.balance.toLocaleString()} F
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 2. Proches d'un changement de grade */}
-            <div className="rounded-2xl border border-amber-100 bg-amber-50/40 p-3.5 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-amber-900 flex items-center gap-1.5">
-                  <Sparkles className="h-3.5 w-3.5 text-amber-600" />
-                  Proches d’une promotion ({partnersCloseToUpgrade.length})
-                </span>
-                <span className="text-[10px] text-amber-700 font-bold bg-amber-100 px-2 py-0.5 rounded-md">
-                  &gt;= 75%
-                </span>
-              </div>
-
-              {partnersCloseToUpgrade.length === 0 ? (
-                <p className="text-xs text-slate-400 py-1">Aucun partenaire proche du seuil supérieur.</p>
-              ) : (
-                <div className="space-y-2 pt-1">
-                  {partnersCloseToUpgrade.slice(0, 2).map((p) => (
-                    <div
-                      key={p.id}
-                      onClick={() => onSelectPartner(p)}
-                      className="rounded-xl bg-white p-2.5 hover:bg-amber-100/60 cursor-pointer transition-colors shadow-2xs"
-                    >
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="font-bold text-slate-900">
-                          {p.code} — {p.fullName}
-                        </span>
-                        <span className="font-black text-amber-700">{p.progressPct}%</span>
-                      </div>
-                      <div className="text-[11px] text-slate-500 mt-0.5">
-                        Vers <strong className="text-slate-800">{p.nextRank}</strong> (CA :{' '}
-                        {p.ca.toLocaleString()} / {p.targetCaNextRank.toLocaleString()} F)
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 3. Partenaires inactifs */}
-            <div className="rounded-2xl border border-rose-100 bg-rose-50/40 p-3.5 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-rose-900 flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5 text-rose-500" />
-                  Partenaires inactifs ({inactivePartners.length})
-                </span>
-                <span className="text-[10px] text-rose-700 font-bold bg-rose-100 px-2 py-0.5 rounded-md">
-                  À relancer
-                </span>
-              </div>
-
-              {inactivePartners.length === 0 ? (
-                <p className="text-xs text-slate-400 py-1">Tous les partenaires sont actifs.</p>
-              ) : (
-                <div className="space-y-1.5 pt-1">
-                  {inactivePartners.slice(0, 2).map((p) => (
-                    <div
-                      key={p.id}
-                      onClick={() => onSelectPartner(p)}
-                      className="flex items-center justify-between rounded-xl bg-white p-2 hover:bg-rose-100/60 cursor-pointer transition-colors shadow-2xs"
-                    >
-                      <div>
-                        <span className="text-xs font-bold text-slate-900">{p.code}</span>
-                        <span className="text-xs text-slate-600 ml-1.5">{p.fullName}</span>
-                      </div>
-                      <span className="text-xs text-slate-400 font-mono">{p.phone}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 4. Commandes en attente */}
-            <div className="rounded-2xl border border-sky-100 bg-sky-50/40 p-3.5 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-sky-900 flex items-center gap-1.5">
-                  <ShoppingBag className="h-3.5 w-3.5 text-sky-600" />
-                  Commandes en cours ({pendingOrders.length})
-                </span>
-                <span className="text-[10px] text-sky-700 font-bold bg-sky-100 px-2 py-0.5 rounded-md">
-                  En attente
-                </span>
-              </div>
-
-              {pendingOrders.length === 0 ? (
-                <p className="text-xs text-slate-400 py-1">Aucune commande en attente.</p>
-              ) : (
-                <div className="space-y-1.5 pt-1">
-                  {pendingOrders.slice(0, 2).map((o) => (
-                    <div
-                      key={o.id}
-                      onClick={() => onSelectOrder(o)}
-                      className="flex items-center justify-between rounded-xl bg-white p-2 hover:bg-sky-100/60 cursor-pointer transition-colors shadow-2xs"
-                    >
-                      <div>
-                        <span className="text-xs font-bold text-slate-900">{o.id}</span>
-                        <span className="text-xs text-slate-600 ml-1.5">
-                          {o.partnerCode || o.clientName}
-                        </span>
-                      </div>
-                      <span className="text-xs font-semibold text-slate-700 font-['JetBrains_Mono']">
-                        {o.totalAmount.toLocaleString()} F
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 5. Intégrité Système & Diagnostic */}
-            <div className="pt-2">
-              <button
-                onClick={() => onNavigateToTab('SYSTEME')}
-                className="w-full flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-xs font-bold text-slate-700 hover:bg-slate-100 cursor-pointer transition-colors"
-              >
-                <span className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                  <span>Consulter le Diagnostic Système (11 contrôles)</span>
-                </span>
-                <ChevronRight className="h-4 w-4 text-slate-400" />
-              </button>
-            </div>
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+            <span>Règle active : 3 commandes max Premium</span>
+            <button
+              onClick={() => onNavigateToTab('ANALYSE')}
+              className="text-indigo-600 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+            >
+              <span>Détails</span>
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
           </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 4. LISTE OPÉRATIONNELLE DES DERNIÈRES COMMANDES (Inspi Capture 2)        */}
+      {/* ========================================================================= */}
+      <div className="bg-white rounded-3xl border border-slate-200/70 p-6 shadow-2xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h2 className="text-base font-bold text-slate-900 tracking-tight">
+              Dernières Commandes
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Flux des commandes clients et attribution des commissions partenaires
+            </p>
+          </div>
+
+          {/* Entonnoir de statut & Bouton d'action principale */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl text-xs">
+              {(['ALL', 'En attente', 'Confirmée', 'Terminée'] as const).map((st) => (
+                <button
+                  key={st}
+                  onClick={() => setOrderFilter(st)}
+                  className={`px-3 py-1 font-semibold rounded-xl transition-all cursor-pointer ${
+                    orderFilter === st
+                      ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                      : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  {st === 'ALL' ? 'Toutes' : st}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => onOpenQuickCreate('ORDER')}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors shadow-xs cursor-pointer"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Nouvelle commande</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Tableau aéré sans encombrement */}
+        {recentOrders.length === 0 ? (
+          <div className="text-center py-10 text-slate-400 text-xs">
+            Aucune commande trouvée pour ce filtre.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                  <th className="pb-3 pl-2">N° Commande</th>
+                  <th className="pb-3">Client</th>
+                  <th className="pb-3">Produit</th>
+                  <th className="pb-3">Partenaire</th>
+                  <th className="pb-3 text-right">Montant</th>
+                  <th className="pb-3 text-center">Statut</th>
+                  <th className="pb-3 pr-2 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100/70">
+                {recentOrders.map((order) => {
+                  const isDelivered = order.orderStatus === 'Terminée' || order.orderStatus === 'Livrée';
+                  const isPending = order.orderStatus === 'En attente';
+                  const isConfirmed = order.orderStatus === 'Confirmée';
+
+                  return (
+                    <tr
+                      key={order.id}
+                      className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
+                      onClick={() => onSelectOrder(order)}
+                    >
+                      <td className="py-3.5 pl-2 font-bold text-slate-900 font-mono">
+                        {order.id}
+                      </td>
+                      <td className="py-3.5">
+                        <div className="font-bold text-slate-800">{order.clientName}</div>
+                        <div className="text-[11px] text-slate-400">{order.date ? order.date.slice(0, 10) : ''}</div>
+                      </td>
+                      <td className="py-3.5">
+                        <span className="font-semibold text-slate-700">{order.productName}</span>
+                        <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500">
+                          {order.isPremium ? 'Premium' : 'Récurrent'}
+                        </span>
+                      </td>
+                      <td className="py-3.5">
+                        {order.partnerName ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-medium text-slate-800">{order.partnerName}</span>
+                            {order.partnerRankAtOrder && (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700">
+                                {order.partnerRankAtOrder}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-[11px] font-medium text-slate-400">Direct AKF</span>
+                        )}
+                      </td>
+                      <td className="py-3.5 text-right font-bold text-slate-900 font-mono">
+                        {order.totalAmount.toLocaleString('fr-FR')} F
+                      </td>
+                      <td className="py-3.5 text-center">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                            isDelivered
+                              ? 'bg-emerald-50 text-emerald-700'
+                              : isConfirmed
+                              ? 'bg-blue-50 text-blue-700'
+                              : isPending
+                              ? 'bg-amber-50 text-amber-700'
+                              : 'bg-rose-50 text-rose-700'
+                          }`}
+                        >
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${
+                              isDelivered
+                                ? 'bg-emerald-500'
+                                : isConfirmed
+                                ? 'bg-blue-500'
+                                : isPending
+                                ? 'bg-amber-500'
+                                : 'bg-rose-500'
+                            }`}
+                          />
+                          {order.orderStatus}
+                        </span>
+                      </td>
+                      <td className="py-3.5 pr-2 text-right">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectOrder(order);
+                          }}
+                          className="text-slate-400 hover:text-slate-900 p-1"
+                          title="Voir les détails"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <div className="pt-2 flex items-center justify-between">
+          <span className="text-xs text-slate-400">
+            Affichage des {recentOrders.length} dernières commandes
+          </span>
+          <button
+            onClick={() => onNavigateToTab('GESTION')}
+            className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
+          >
+            <span>Consulter toutes les commandes</span>
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
     </div>

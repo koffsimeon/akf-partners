@@ -15,6 +15,7 @@ import {
   Sparkles,
   Smartphone,
   Package,
+  LogOut,
 } from 'lucide-react';
 import { DataSourceMode, SyncState } from '../types';
 import { AkfLogo } from './AkfLogo';
@@ -30,6 +31,9 @@ interface NavigationProps {
   onOpenQuickCreate: (type: 'PARTNER' | 'CLIENT' | 'ORDER' | 'PAYMENT' | 'PRODUCT') => void;
   onOpenUniversalSearch: () => void;
   onOpenAuth?: () => void;
+  onSignOut?: () => void;
+  currentUserEmail?: string;
+  currentUserRole?: string;
   dataSourceMode?: DataSourceMode;
 }
 
@@ -42,6 +46,9 @@ export function Navigation({
   onOpenQuickCreate,
   onOpenUniversalSearch,
   onOpenAuth,
+  onSignOut,
+  currentUserEmail,
+  currentUserRole,
   dataSourceMode = 'SHEETS_LIVE',
 }: NavigationProps) {
   const [quickMenuOpen, setQuickMenuOpen] = useState(false);
@@ -297,21 +304,33 @@ export function Navigation({
             )}
           </div>
 
-          {/* User Profile Badge (Inspi Job.find / Eduka Profile Avatar) */}
-          <button
-            type="button"
-            onClick={onOpenAuth}
-            className="flex items-center gap-2.5 pl-2 border-l border-slate-200 hover:opacity-80 transition-opacity cursor-pointer text-left"
-            title="Connexion & Compte Supabase"
-          >
-            <div className="h-9 w-9 rounded-2xl bg-gradient-to-tr from-slate-800 to-slate-700 flex items-center justify-center font-extrabold text-xs text-white shadow-xs">
-              AD
+          {/* User Profile Badge & Logout Button */}
+          <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
+            <div className="flex items-center gap-2">
+              <div className="h-9 w-9 rounded-2xl bg-gradient-to-tr from-slate-900 to-slate-800 flex items-center justify-center font-extrabold text-xs text-white shadow-xs">
+                {currentUserEmail ? currentUserEmail.slice(0, 2).toUpperCase() : 'AD'}
+              </div>
+              <div className="leading-tight hidden lg:block max-w-[140px]">
+                <span className="font-bold text-xs text-slate-900 block truncate" title={currentUserEmail}>
+                  {currentUserEmail ? currentUserEmail.split('@')[0] : 'Admin'}
+                </span>
+                <span className="text-[10px] text-emerald-700 font-extrabold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60 inline-block mt-0.5">
+                  {currentUserRole || 'ADMIN'}
+                </span>
+              </div>
             </div>
-            <div className="leading-tight hidden lg:block">
-              <span className="font-bold text-xs text-slate-900 block">Admin</span>
-              <span className="text-[10px] text-slate-400 font-medium">Direction AKF</span>
-            </div>
-          </button>
+
+            {onSignOut && (
+              <button
+                type="button"
+                onClick={onSignOut}
+                className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                title="Se déconnecter (Verrouiller le cockpit)"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         </div>
       </header>
 

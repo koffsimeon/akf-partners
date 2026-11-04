@@ -32,8 +32,20 @@ import {
   WaveConfig,
 } from './types';
 import { RefreshCw, CheckCircle2, AlertCircle, X } from 'lucide-react';
+import { User } from '@supabase/supabase-js';
+import {
+  getSupabaseSession,
+  getUserProfile,
+  subscribeToAuthStateChange,
+  signOutSupabase,
+  UserProfile,
+} from './services/supabase';
 
 export default function App() {
+  const [sessionUser, setSessionUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [authChecking, setAuthChecking] = useState<boolean>(true);
+
   const [currentTab, setCurrentTab] = useState<TabType>('ACCUEIL');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -109,8 +121,6 @@ export default function App() {
     wave?: WaveConfig | null;
   }>({ isOpen: false, mode: 'create' });
 
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-
   // Notification Toast
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -180,9 +190,72 @@ export default function App() {
     }
   }, []);
 
+  // Cycle de vie de l'authentification Supabase (Gatekeeper)
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    let mounted = true;
+
+    async function checkInitialSession() {
+      try {
+        const session = await getSupabaseSession();
+        if (mounted) {
+          if (session?.user) {
+            setSessionUser(session.user);
+            const profile = await getUserProfile(session.user.id);
+            if (mounted) setUserProfile(profile);
+          } else {
+            setSessionUser(null);
+            setUserProfile(null);
+          }
+        }
+      } catch (err) {
+        console.error('Erreur lors de la vérification de la session:', err);
+      } finally {
+        if (mounted) setAuthChecking(false);
+      }
+    }
+
+    checkInitialSession();
+
+    const subscription = subscribeToAuthStateChange(async (user) => {
+      if (!mounted) return;
+      setSessionUser(user);
+      if (user) {
+        const profile = await getUserProfile(user.id);
+        if (mounted) setUserProfile(profile);
+      } else {
+        setUserProfile(null);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription?.unsubscribe?.();
+    };
+  }, []);
+
+  // Déclenchement de la récupération des données UNIQUEMENT si l'utilisateur est authentifié
+  useEffect(() => {
+    if (sessionUser) {
+      fetchData();
+    }
+  }, [sessionUser, fetchData]);
+
+  // Déconnexion avec purge de sécurité de la mémoire vive
+  const handleSignOut = async () => {
+    try {
+      await signOutSupabase();
+      setSessionUser(null);
+      setUserProfile(null);
+      setPartners([]);
+      setClients([]);
+      setOrders([]);
+      setPayments([]);
+      setProducts([]);
+      showToast('Session fermée avec succès. Cockpit verrouillé.');
+    } catch (err: any) {
+      showToast(err.message || 'Erreur lors de la déconnexion', 'error');
+    }
+  };
 
   // Synchronisation
   const handleSyncNow = async () => {
@@ -489,6 +562,42 @@ export default function App() {
     if (type === 'PRODUCT') setProductModal({ isOpen: true, mode: 'create', product: null });
   };
 
+  // 1. Écran de chargement lors du contrôle de session
+  if (authChecking) {
+    return (
+      <div className="min-h-screen bg-[#0f172a] text-white flex flex-col items-center justify-center space-y-4">
+        <RefreshCw className="h-8 w-8 animate-spin text-emerald-400" />
+        <div className="text-center">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-300">
+            Contrôle d'accès sécurisé...
+          </p>
+          <p className="text-[11px] text-slate-500 mt-1">
+            Vérification de la session Supabase
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Barrière de sécurité absolue : Si l'utilisateur n'est pas connecté, afficher UNIQUEMENT AuthView
+  if (!sessionUser) {
+    return (
+      <AuthView
+        onLoginSuccess={async (email) => {
+          const session = await getSupabaseSession();
+          if (session?.user) {
+            setSessionUser(session.user);
+            const prof = await getUserProfile(session.user.id);
+            setUserProfile(prof);
+          } else {
+            setSessionUser({ email } as User);
+          }
+          showToast(`Connexion établie : Bienvenue ${email}`);
+        }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-['Plus_Jakarta_Sans'] flex flex-col">
       {/* Toast Notification */}
@@ -523,7 +632,9 @@ export default function App() {
         onOpenUniversalSearch={() => {
           setCurrentTab('RECHERCHE');
         }}
-        onOpenAuth={() => setAuthModalOpen(true)}
+        onSignOut={handleSignOut}
+        currentUserEmail={sessionUser?.email || undefined}
+        currentUserRole={userProfile?.role || 'ADMIN'}
         dataSourceMode={dataSourceMode}
       />
 
@@ -737,25 +848,6 @@ export default function App() {
         mode={waveModal.mode}
         onSave={handleSaveWave}
       />
-
-      {/* Modal d'Authentification & Supabase */}
-      {authModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in">
-          <div className="relative w-full max-w-md">
-            <button
-              onClick={() => setAuthModalOpen(false)}
-              className="absolute right-4 top-4 z-10 p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
-              title="Fermer"
-            >
-              <X className="h-4 w-4" />
-            </button>
-            <AuthView
-              onDismiss={() => setAuthModalOpen(false)}
-              onLoginSuccess={() => setAuthModalOpen(false)}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -308,7 +308,7 @@ export function ManagementView({
               className="w-full sm:w-auto flex items-center justify-center gap-1.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 px-4 py-2.5 text-xs font-bold text-white transition-all shadow-xs shadow-indigo-600/20 cursor-pointer"
             >
               <Plus className="h-4 w-4" />
-              <span>+ Créer Partenaire</span>
+              <span>Créer Partenaire</span>
             </button>
           )}
           {subTab === 'CLIENTS' && (
@@ -317,7 +317,7 @@ export function ManagementView({
               className="w-full sm:w-auto flex items-center justify-center gap-1.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white transition-all shadow-xs shadow-emerald-600/20 cursor-pointer"
             >
               <Plus className="h-4 w-4" />
-              <span>+ Créer Client</span>
+              <span>Créer Client</span>
             </button>
           )}
           {subTab === 'ORDERS' && (
@@ -326,7 +326,7 @@ export function ManagementView({
               className="w-full sm:w-auto flex items-center justify-center gap-1.5 rounded-2xl bg-amber-500 hover:bg-amber-600 px-4 py-2.5 text-xs font-bold text-white transition-all shadow-xs shadow-amber-500/20 cursor-pointer"
             >
               <Plus className="h-4 w-4" />
-              <span>+ Nouvelle Commande</span>
+              <span>Nouvelle Commande</span>
             </button>
           )}
           {subTab === 'PAYMENTS' && (
@@ -335,7 +335,7 @@ export function ManagementView({
               className="w-full sm:w-auto flex items-center justify-center gap-1.5 rounded-2xl bg-purple-600 hover:bg-purple-700 px-4 py-2.5 text-xs font-bold text-white transition-all shadow-xs shadow-purple-600/20 cursor-pointer"
             >
               <Plus className="h-4 w-4" />
-              <span>+ Émettre Paiement</span>
+              <span>Émettre Paiement</span>
             </button>
           )}
           {subTab === 'PRODUCTS' && (
@@ -344,7 +344,7 @@ export function ManagementView({
               className="w-full sm:w-auto flex items-center justify-center gap-1.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 px-4 py-2.5 text-xs font-bold text-white transition-all shadow-xs shadow-indigo-600/20 cursor-pointer"
             >
               <Plus className="h-4 w-4" />
-              <span>+ Nouveau Produit</span>
+              <span>Nouveau Produit</span>
             </button>
           )}
         </div>

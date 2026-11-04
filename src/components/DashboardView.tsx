@@ -11,6 +11,7 @@ import {
   Sparkles,
   Award,
   Filter,
+  BarChart3,
 } from 'lucide-react';
 import { Client, Order, Partner, Payment, SyncState } from '../types';
 
@@ -107,9 +108,9 @@ export function DashboardView({
       }
     }
 
-    const total = premiumCa + recurrentCa || 1;
-    const premiumPct = Math.round((premiumCa / total) * 100);
-    const recurrentPct = 100 - premiumPct;
+    const total = premiumCa + recurrentCa;
+    const premiumPct = total > 0 ? Math.round((premiumCa / total) * 100) : 0;
+    const recurrentPct = total > 0 ? 100 - premiumPct : 0;
 
     return {
       premiumCa,
@@ -126,15 +127,7 @@ export function DashboardView({
       .sort((a, b) => new Date(a.date || a.createdAt).getTime() - new Date(b.date || b.createdAt).getTime());
 
     if (list.length === 0) {
-      return [
-        { label: 'Lun', ca: 45000, ordersCount: 2 },
-        { label: 'Mar', ca: 85000, ordersCount: 4 },
-        { label: 'Mer', ca: 60000, ordersCount: 3 },
-        { label: 'Jeu', ca: 120000, ordersCount: 6 },
-        { label: 'Ven', ca: 95000, ordersCount: 5 },
-        { label: 'Sam', ca: 180000, ordersCount: 8 },
-        { label: 'Dim', ca: 70000, ordersCount: 3 },
-      ];
+      return [];
     }
 
     const groups = new Map<string, { label: string; ca: number; ordersCount: number }>();
@@ -150,7 +143,8 @@ export function DashboardView({
   }, [periodFilteredOrders]);
 
   const maxTimelineCa = useMemo(() => {
-    return Math.max(...timelineData.map((d) => d.ca), 50000);
+    if (timelineData.length === 0) return 10000;
+    return Math.max(...timelineData.map((d) => d.ca), 10000);
   }, [timelineData]);
 
   // Filtrage des commandes récentes à afficher en bas
@@ -215,9 +209,9 @@ export function DashboardView({
             <span className="text-xs font-bold text-indigo-100 uppercase tracking-wider">
               Chiffre d'Affaires
             </span>
-            <div className="flex items-center gap-1 bg-white/20 px-2 py-0.5 rounded-full text-[11px] font-bold text-white">
-              <TrendingUp className="h-3 w-3" />
-              <span>+14.2%</span>
+            <div className="flex items-center gap-1 bg-white/20 px-2.5 py-0.5 rounded-full text-[11px] font-bold text-white backdrop-blur-xs">
+              <Sparkles className="h-3 w-3" />
+              <span>Vague 1</span>
             </div>
           </div>
           <div className="mt-5">
@@ -320,30 +314,48 @@ export function DashboardView({
           </div>
 
           {/* Bar Chart Container avec barres arrondies violettes */}
-          <div className="h-56 flex items-end gap-3 pt-6 pb-2 px-2 border-b border-slate-100">
-            {timelineData.map((item, idx) => {
-              const heightPct = Math.max(12, Math.round((item.ca / maxTimelineCa) * 100));
-              return (
-                <div
-                  key={idx}
-                  onMouseEnter={() => setHoveredBar(item)}
-                  onMouseLeave={() => setHoveredBar(null)}
-                  className="flex-1 h-full flex flex-col justify-end items-center group cursor-pointer"
-                >
+          {timelineData.length === 0 ? (
+            <div className="h-56 flex flex-col items-center justify-center text-center p-4 border-b border-slate-100">
+              <div className="h-12 w-12 rounded-2xl bg-indigo-50 text-indigo-500 flex items-center justify-center mb-2.5">
+                <BarChart3 className="h-6 w-6 stroke-[1.75]" />
+              </div>
+              <p className="text-sm font-bold text-slate-800">
+                Aucune vente sur cette période
+              </p>
+              <p className="text-xs text-slate-400 mt-1 max-w-xs">
+                L'histogramme s'actualisera en direct dès l'enregistrement de vos premières commandes.
+              </p>
+            </div>
+          ) : (
+            <div className="h-56 flex items-end gap-3 pt-6 pb-2 px-2 border-b border-slate-100">
+              {timelineData.map((item, idx) => {
+                const heightPct = Math.max(12, Math.round((item.ca / maxTimelineCa) * 100));
+                return (
                   <div
-                    className="w-full max-w-[42px] rounded-t-2xl bg-indigo-500/80 group-hover:bg-indigo-600 transition-all duration-300"
-                    style={{ height: `${heightPct}%` }}
-                  />
-                  <span className="text-[11px] font-semibold text-slate-400 group-hover:text-slate-900 mt-2 transition-colors">
-                    {item.label}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-          <div className="flex items-center justify-between pt-3 text-[11px] text-slate-400">
+                    key={idx}
+                    onMouseEnter={() => setHoveredBar(item)}
+                    onMouseLeave={() => setHoveredBar(null)}
+                    className="flex-1 h-full flex flex-col justify-end items-center group cursor-pointer"
+                  >
+                    <div
+                      className="w-full max-w-[42px] rounded-t-2xl bg-indigo-500/80 group-hover:bg-indigo-600 transition-all duration-300"
+                      style={{ height: `${heightPct}%` }}
+                    />
+                    <span className="text-[11px] font-semibold text-slate-400 group-hover:text-slate-900 mt-2 transition-colors">
+                      {item.label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <div className="flex items-center justify-between pt-3 text-[11px] text-slate-400 font-medium">
             <span>0 FCFA</span>
-            <span>Objectif hebdomadaire atteint à 92%</span>
+            <span>
+              {timelineData.length > 0
+                ? `${validatedOrdersCount} commande(s) validée(s)`
+                : '0 commande enregistrée'}
+            </span>
             <span>{maxTimelineCa.toLocaleString('fr-FR')} FCFA</span>
           </div>
         </div>
@@ -395,10 +407,10 @@ export function DashboardView({
               </svg>
               <div className="absolute text-center">
                 <span className="text-lg font-black text-slate-900 leading-none">
-                  {categorySplit.premiumPct}%
+                  {totalCa > 0 ? `${categorySplit.premiumPct}%` : '0%'}
                 </span>
                 <span className="text-[10px] text-slate-400 font-bold block">
-                  Premium
+                  {totalCa > 0 ? 'Premium' : 'Vente'}
                 </span>
               </div>
             </div>

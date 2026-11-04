@@ -149,38 +149,10 @@ export function Navigation({
           </div>
         </div>
 
-        {/* Sidebar Footer Widgets */}
-        <div className="space-y-3 pt-4 border-t border-slate-100">
-          {/* Data Source Indicator */}
-          <div
-            onClick={() => onSelectTab('SYSTEME')}
-            className="flex items-center gap-2.5 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-2.5 text-xs text-slate-700 hover:bg-slate-100 cursor-pointer transition-colors"
-          >
-            <div className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[11px] font-bold text-slate-800 truncate">
-                {dataSourceMode === 'MOCK' ? 'Mode Local Démo' : 'Google Sheets Connecté'}
-              </p>
-              <p className="text-[10px] text-slate-400 truncate">
-                {syncState.status === 'SYNCHRONISE' ? 'Données synchronisées' : 'Vérification requise'}
-              </p>
-            </div>
-          </div>
-
-          {/* Quick System Check Button */}
-          <button
-            onClick={() => onSelectTab('SYSTEME')}
-            className="w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
-          >
-            <span className="flex items-center gap-2">
-              <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-              <span>Contrôle Système (11 tests)</span>
-            </span>
-            <span className="text-[10px] text-slate-400 font-mono">v1.0</span>
-          </button>
+        {/* Sidebar Footer */}
+        <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+          <span>AKF Partners Bénin</span>
+          <span className="font-mono text-[10px]">v1.0</span>
         </div>
       </aside>
 
@@ -348,65 +320,22 @@ export function Navigation({
               </div>
             </div>
 
-            {/* Drawer Footer Widgets */}
-            <div className="p-4 border-t border-slate-100 space-y-2.5 bg-slate-50/60">
-              {/* Data Source status */}
-              <div className="flex items-center justify-between text-xs text-slate-700 px-3 py-2 rounded-xl bg-white border border-slate-200/80">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="relative flex h-2 w-2 shrink-0">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-bold text-slate-800 truncate">
-                      {dataSourceMode === 'MOCK' ? 'Mode Démo' : 'Supabase Live'}
-                    </p>
-                    <p className="text-[10px] text-slate-400 truncate">
-                      {syncState.status === 'SYNCHRONISE' ? 'Données à jour' : 'Synchronisation requise'}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => onSyncNow()}
-                  disabled={isSyncing}
-                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 cursor-pointer"
-                  title="Synchroniser"
-                >
-                  <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin text-emerald-600' : ''}`} />
-                </button>
-              </div>
-
-              {/* Diagnostic Button in Mobile Drawer */}
-              <button
-                onClick={() => {
-                  setMobileDrawerOpen(false);
-                  onSelectTab('SYSTEME');
-                }}
-                className="w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-white border border-transparent hover:border-slate-200 transition-colors cursor-pointer"
-              >
-                <span className="flex items-center gap-2">
-                  <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-                  <span>Contrôle Système (11 tests)</span>
-                </span>
-                <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-              </button>
-
-              {/* Sign Out Button in Mobile Drawer */}
-              {onSignOut && (
+            {/* Drawer Footer */}
+            {onSignOut && (
+              <div className="p-4 border-t border-slate-100 bg-slate-50/60">
                 <button
                   type="button"
                   onClick={() => {
                     setMobileDrawerOpen(false);
                     onSignOut();
                   }}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 px-4 text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200/80 hover:bg-rose-100 active:scale-95 transition-all cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 rounded-xl py-3 px-4 text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200/80 hover:bg-rose-100 active:scale-95 transition-all cursor-pointer"
                 >
                   <LogOut className="h-4 w-4" />
-                  <span>Se déconnecter (Verrouiller)</span>
+                  <span>Se déconnecter</span>
                 </button>
-              )}
-            </div>
+              </div>
+            )}
           </aside>
         </div>
       )}
@@ -609,31 +538,8 @@ export function Navigation({
           </div>
         </div>
 
-        {/* DESKTOP RIGHT ACTIONS: Sync + Nouveau + Profile */}
+        {/* DESKTOP RIGHT ACTIONS: Nouveau + Profile */}
         <div className="hidden md:flex items-center gap-3 ml-2">
-          {/* Synchronisation Button */}
-          <button
-            type="button"
-            onClick={onSyncNow}
-            disabled={isSyncing}
-            title={`État de synchronisation : ${syncState.status}. Cliquez pour synchroniser maintenant.`}
-            className={`flex items-center gap-1.5 rounded-2xl px-3 py-2 text-xs font-semibold border transition-all cursor-pointer shadow-2xs ${
-              syncState.status === 'SYNCHRONISE'
-                ? 'bg-emerald-50/80 text-emerald-700 border-emerald-200/80 hover:bg-emerald-100'
-                : syncState.status === 'EN_ATTENTE'
-                ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
-                : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
-            }`}
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin text-slate-600' : ''}`} />
-            <span>
-              {syncState.status === 'SYNCHRONISE'
-                ? 'Synchronisé'
-                : syncState.status === 'EN_ATTENTE'
-                ? 'En attente'
-                : 'Erreur'}
-            </span>
-          </button>
 
           {/* Quick Create Dropdown "+ Nouveau" Desktop */}
           <div className="relative">
@@ -749,52 +655,6 @@ export function Navigation({
         </div>
       </header>
 
-      {/* ========================================================================= */}
-      {/* MOBILE BOTTOM NAVIGATION (Thumb-friendly, Ergonomic Safe-Area Nav)        */}
-      {/* ========================================================================= */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/80 px-2 pt-1.5 pb-[max(0.6rem,env(safe-area-inset-bottom))] shadow-lg shadow-slate-900/5 select-none">
-        <div className="grid grid-cols-5 gap-1 items-center max-w-md mx-auto">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = currentTab === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => onSelectTab(item.id as TabType)}
-                className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-2xl transition-all relative cursor-pointer min-h-[50px] active:scale-95 ${
-                  isActive
-                    ? 'bg-slate-900 text-white shadow-sm'
-                    : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
-                }`}
-              >
-                <div className="relative">
-                  <Icon
-                    className={`h-4 w-4 transition-transform ${
-                      isActive ? 'text-white' : 'text-slate-500'
-                    }`}
-                  />
-                  {item.badge && item.badge === '!' && (
-                    <span className="absolute -top-1 -right-2 h-3 w-3 rounded-full bg-rose-600 text-[8px] font-black text-white flex items-center justify-center">
-                      !
-                    </span>
-                  )}
-                  {item.id === 'EXPRESS' && !isActive && (
-                    <span className="absolute -top-0.5 -right-1.5 h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  )}
-                </div>
-                <span
-                  className={`text-[10px] mt-1 tracking-tight leading-none truncate w-full text-center ${
-                    isActive ? 'font-bold text-white' : 'font-medium'
-                  }`}
-                >
-                  {item.label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </nav>
     </>
   );
 }

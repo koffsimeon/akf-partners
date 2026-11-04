@@ -639,7 +639,7 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 md:pl-64 pt-6 px-4 md:px-8 max-w-7xl w-full mx-auto pb-16">
+      <main className="flex-1 md:pl-64 pt-3 md:pt-6 px-3 sm:px-4 md:px-8 max-w-7xl w-full mx-auto pb-28 md:pb-16">
         {loading ? (
           <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-3">
             <RefreshCw className="h-8 w-8 animate-spin text-emerald-600" />

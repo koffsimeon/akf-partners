@@ -75,8 +75,11 @@ export function AnalysisView({
     return matchRank && matchWave;
   }).sort((a, b) => b.ca - a.ca);
 
-  // Proches d'une promotion (>75%)
-  const closePartners = partners.filter((p) => p.nextRank && p.progressPct >= 75);
+  // Partenaires ayant atteint les critères et en attente de validation humaine
+  const eligiblePartners = partners.filter((p) => p.eligibleForPromotion && p.nextRank);
+
+  // Proches d'une promotion (>=75% sans avoir encore atteint les 2 seuils)
+  const closePartners = partners.filter((p) => !p.eligibleForPromotion && p.nextRank && p.progressPct >= 75);
 
   // Détection des anomalies
   const negativeBalances = partners.filter((p) => p.balance < 0);
@@ -100,6 +103,8 @@ export function AnalysisView({
     clientsWithoutPartnerAndNotDirect.length +
     premiumOrdersOverRank3Commissioned.length +
     ordersWithMathMismatch.length;
+
+  const [promotingId, setPromotingId] = useState<string | null>(null);
 
   return (
     <div className="space-y-6 pb-12">
@@ -201,6 +206,75 @@ export function AnalysisView({
               </div>
             </div>
           </div>
+
+          {/* Section Prioritaire : Éligibilités de Promotion en Attente de Validation Humaine */}
+          {eligiblePartners.length > 0 && (
+            <div className="rounded-3xl border border-amber-200 bg-amber-50/70 p-6 space-y-4 shadow-sm animate-in fade-in">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-amber-200/80 pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-xs">
+                    <Award className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-extrabold text-amber-950">
+                      Promotions Détectées — En attente de validation humaine ({eligiblePartners.length})
+                    </h3>
+                    <p className="text-xs text-amber-800">
+                      Ces partenaires ont validé les deux conditions requises (C.A. et commandes) selon la vague active.
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-amber-200/70 text-amber-900 self-start sm:self-auto">
+                  Action requise
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {eligiblePartners.map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl bg-white p-4 border border-amber-200/80 shadow-2xs"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs font-bold bg-slate-100 text-slate-800 px-2 py-0.5 rounded-lg">
+                          {p.code}
+                        </span>
+                        <h4 className="text-xs font-bold text-slate-900">{p.fullName}</h4>
+                      </div>
+                      <div className="text-[11px] text-slate-600 mt-1">
+                        Grade actuel : <span className="font-bold text-slate-800">{p.rank}</span> → Promotion vers :{' '}
+                        <span className="font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
+                          {p.nextRank}
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">
+                        Performance : {p.orderCount} commandes • {p.ca.toLocaleString('fr-FR')} FCFA
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={async () => {
+                        if (confirm(`Confirmer la promotion de ${p.fullName} au grade de ${p.nextRank} ?`)) {
+                          try {
+                            setPromotingId(p.id);
+                            await onPromotePartner?.(p.id);
+                          } finally {
+                            setPromotingId(null);
+                          }
+                        }
+                      }}
+                      disabled={promotingId === p.id}
+                      className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-xs transition-colors flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer disabled:opacity-50"
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                      <span>{promotingId === p.id ? 'Validation...' : `Valider ${p.nextRank}`}</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Box 1: Qui doit être payé aujourd'hui ? */}

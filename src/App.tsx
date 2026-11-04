@@ -13,7 +13,11 @@ import {
   ClientModal,
   OrderModal,
   PaymentModal,
+  ProductModal,
+  WaveModal,
 } from './components/Modals';
+import { PartnerQuickMobileView } from './components/PartnerQuickMobileView';
+import { AuthView } from './components/auth/AuthView';
 import {
   Client,
   DataSourceMode,
@@ -25,8 +29,9 @@ import {
   SystemConfig,
   AuditLog,
   DiagnosticResult,
+  WaveConfig,
 } from './types';
-import { RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
+import { RefreshCw, CheckCircle2, AlertCircle, X } from 'lucide-react';
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState<TabType>('ACCUEIL');
@@ -91,6 +96,20 @@ export default function App() {
     payment?: Payment | null;
     preselectedPartner?: Partner | null;
   }>({ isOpen: false, mode: 'create' });
+
+  const [productModal, setProductModal] = useState<{
+    isOpen: boolean;
+    mode: 'create' | 'edit';
+    product?: Product | null;
+  }>({ isOpen: false, mode: 'create' });
+
+  const [waveModal, setWaveModal] = useState<{
+    isOpen: boolean;
+    mode: 'create' | 'edit';
+    wave?: WaveConfig | null;
+  }>({ isOpen: false, mode: 'create' });
+
+  const [authModalOpen, setAuthModalOpen] = useState(false);
 
   // Notification Toast
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -366,6 +385,73 @@ export default function App() {
     await fetchData();
   };
 
+  const handleSaveProduct = async (productData: Product) => {
+    try {
+      const isEdit = Boolean(productData.id);
+      const url = isEdit ? `/api/products/${productData.id}` : '/api/products';
+      const method = isEdit ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(productData),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      showToast(data.message || `Produit « ${data.product?.name || ''} » enregistré avec succès !`);
+      await fetchData();
+    } catch (err: any) {
+      showToast(err.message, 'error');
+      throw err;
+    }
+  };
+
+  const handleDeleteProduct = async (productId: string) => {
+    try {
+      const res = await fetch(`/api/products/${productId}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      showToast(data.message || 'Produit retiré du catalogue avec succès.');
+      await fetchData();
+    } catch (err: any) {
+      showToast(err.message, 'error');
+      throw err;
+    }
+  };
+
+  const handleSaveWave = async (waveData: WaveConfig) => {
+    try {
+      const res = await fetch('/api/waves', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(waveData),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      showToast(data.message || `Vague « ${waveData.wave} » configurée avec succès !`);
+      await fetchData();
+    } catch (err: any) {
+      showToast(err.message, 'error');
+      throw err;
+    }
+  };
+
+  const handleActivateWave = async (waveName: string) => {
+    try {
+      const res = await fetch(`/api/waves/${encodeURIComponent(waveName)}/activate`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      showToast(data.message || `Vague ${waveName} activée avec succès !`);
+      await fetchData();
+    } catch (err: any) {
+      showToast(err.message, 'error');
+      throw err;
+    }
+  };
+
   // Relational jumps
   const handleNavigateFromModal = (
     type: 'PARTNER' | 'CLIENT' | 'ORDER' | 'PAYMENT',
@@ -389,7 +475,7 @@ export default function App() {
     }
   };
 
-  const handleOpenQuickCreate = (type: 'PARTNER' | 'CLIENT' | 'ORDER' | 'PAYMENT') => {
+  const handleOpenQuickCreate = (type: 'PARTNER' | 'CLIENT' | 'ORDER' | 'PAYMENT' | 'PRODUCT') => {
     if (type === 'PARTNER') setPartnerModal({ isOpen: true, mode: 'create', partner: null });
     if (type === 'CLIENT') setClientModal({ isOpen: true, mode: 'create', client: null });
     if (type === 'ORDER') setOrderModal({ isOpen: true, mode: 'create', order: null });
@@ -400,6 +486,7 @@ export default function App() {
         payment: null,
         preselectedPartner: null,
       });
+    if (type === 'PRODUCT') setProductModal({ isOpen: true, mode: 'create', product: null });
   };
 
   return (
@@ -436,6 +523,7 @@ export default function App() {
         onOpenUniversalSearch={() => {
           setCurrentTab('RECHERCHE');
         }}
+        onOpenAuth={() => setAuthModalOpen(true)}
         dataSourceMode={dataSourceMode}
       />
 
@@ -500,6 +588,7 @@ export default function App() {
                 clients={clients}
                 orders={orders}
                 payments={payments}
+                products={products}
                 initialSubTab={managementSubTab}
                 filterId={managementFilterId}
                 onOpenCreate={handleOpenQuickCreate}
@@ -508,6 +597,7 @@ export default function App() {
                 onSelectClient={(c) => setClientModal({ isOpen: true, mode: 'view', client: c })}
                 onSelectOrder={(o) => setOrderModal({ isOpen: true, mode: 'view', order: o })}
                 onSelectPayment={(pay) => setPaymentModal({ isOpen: true, mode: 'view', payment: pay })}
+                onSelectProduct={(p) => setProductModal({ isOpen: true, mode: 'edit', product: p })}
                 onClearFilterId={() => setManagementFilterId(null)}
               />
             )}
@@ -544,6 +634,29 @@ export default function App() {
                 onTriggerRecalculate={handleRecalculate}
                 onRunDiagnostic={handleRunDiagnostic}
                 onRefreshLogs={handleRefreshLogs}
+                onOpenWaveModal={() => setWaveModal({ isOpen: true, mode: 'create', wave: null })}
+                onActivateWave={handleActivateWave}
+              />
+            )}
+
+            {/* Zone 6 : FICHE EXPRESS MOBILE */}
+            {currentTab === 'EXPRESS' && (
+              <PartnerQuickMobileView
+                partners={partners}
+                orders={orders}
+                payments={payments}
+                clients={clients}
+                config={config}
+                onInitiatePayment={(p) =>
+                  setPaymentModal({
+                    isOpen: true,
+                    mode: 'create',
+                    payment: null,
+                    preselectedPartner: p,
+                  })
+                }
+                onSelectPartnerFull={(p) => setPartnerModal({ isOpen: true, mode: 'view', partner: p })}
+                onSelectOrder={(o) => setOrderModal({ isOpen: true, mode: 'view', order: o })}
               />
             )}
           </>
@@ -607,6 +720,42 @@ export default function App() {
         onSave={handleCreatePayment}
         onNavigateTo={handleNavigateFromModal}
       />
+
+      <ProductModal
+        isOpen={productModal.isOpen}
+        onClose={() => setProductModal({ ...productModal, isOpen: false })}
+        product={productModal.product}
+        mode={productModal.mode}
+        onSave={handleSaveProduct}
+        onDelete={handleDeleteProduct}
+      />
+
+      <WaveModal
+        isOpen={waveModal.isOpen}
+        onClose={() => setWaveModal({ ...waveModal, isOpen: false })}
+        wave={waveModal.wave}
+        mode={waveModal.mode}
+        onSave={handleSaveWave}
+      />
+
+      {/* Modal d'Authentification & Supabase */}
+      {authModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in">
+          <div className="relative w-full max-w-md">
+            <button
+              onClick={() => setAuthModalOpen(false)}
+              className="absolute right-4 top-4 z-10 p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+              title="Fermer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <AuthView
+              onDismiss={() => setAuthModalOpen(false)}
+              onLoginSuccess={() => setAuthModalOpen(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -13,11 +13,13 @@ import {
   CreditCard,
   ChevronDown,
   Sparkles,
+  Smartphone,
+  Package,
 } from 'lucide-react';
 import { DataSourceMode, SyncState } from '../types';
 import { AkfLogo } from './AkfLogo';
 
-export type TabType = 'ACCUEIL' | 'RECHERCHE' | 'GESTION' | 'ANALYSE' | 'SYSTEME';
+export type TabType = 'ACCUEIL' | 'RECHERCHE' | 'GESTION' | 'ANALYSE' | 'SYSTEME' | 'EXPRESS';
 
 interface NavigationProps {
   currentTab: TabType;
@@ -25,8 +27,9 @@ interface NavigationProps {
   syncState: SyncState;
   onSyncNow: () => Promise<void>;
   isSyncing: boolean;
-  onOpenQuickCreate: (type: 'PARTNER' | 'CLIENT' | 'ORDER' | 'PAYMENT') => void;
+  onOpenQuickCreate: (type: 'PARTNER' | 'CLIENT' | 'ORDER' | 'PAYMENT' | 'PRODUCT') => void;
   onOpenUniversalSearch: () => void;
+  onOpenAuth?: () => void;
   dataSourceMode?: DataSourceMode;
 }
 
@@ -38,13 +41,14 @@ export function Navigation({
   isSyncing,
   onOpenQuickCreate,
   onOpenUniversalSearch,
+  onOpenAuth,
   dataSourceMode = 'SHEETS_LIVE',
 }: NavigationProps) {
   const [quickMenuOpen, setQuickMenuOpen] = useState(false);
 
   const navItems = [
     { id: 'ACCUEIL', label: 'Accueil', icon: Home, badge: null },
-    { id: 'RECHERCHE', label: 'Recherche', icon: Search, badge: null },
+    { id: 'EXPRESS', label: 'Express 📱', icon: Smartphone, badge: null },
     { id: 'GESTION', label: 'Gestion', icon: FolderKanban, badge: null },
     { id: 'ANALYSE', label: 'Analyse', icon: BarChart3, badge: null },
     {
@@ -276,13 +280,30 @@ export function Navigation({
                     </div>
                     <span>Paiement (PAYxxx)</span>
                   </button>
+                  <button
+                    onClick={() => {
+                      setQuickMenuOpen(false);
+                      onOpenQuickCreate('PRODUCT');
+                    }}
+                    className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-teal-50 hover:text-teal-700 transition-colors cursor-pointer"
+                  >
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-100 text-teal-600">
+                      <Package className="h-3.5 w-3.5" />
+                    </div>
+                    <span>Produit (Catalogue)</span>
+                  </button>
                 </div>
               </>
             )}
           </div>
 
           {/* User Profile Badge (Inspi Job.find / Eduka Profile Avatar) */}
-          <div className="flex items-center gap-2.5 pl-2 border-l border-slate-200">
+          <button
+            type="button"
+            onClick={onOpenAuth}
+            className="flex items-center gap-2.5 pl-2 border-l border-slate-200 hover:opacity-80 transition-opacity cursor-pointer text-left"
+            title="Connexion & Compte Supabase"
+          >
             <div className="h-9 w-9 rounded-2xl bg-gradient-to-tr from-slate-800 to-slate-700 flex items-center justify-center font-extrabold text-xs text-white shadow-xs">
               AD
             </div>
@@ -290,7 +311,7 @@ export function Navigation({
               <span className="font-bold text-xs text-slate-900 block">Admin</span>
               <span className="text-[10px] text-slate-400 font-medium">Direction AKF</span>
             </div>
-          </div>
+          </button>
         </div>
       </header>
 

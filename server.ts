@@ -6,6 +6,8 @@ import {
   clientsRouter,
   ordersRouter,
   paymentsRouter,
+  productsRouter,
+  wavesRouter,
   sheetsRouter,
   systemRouter,
 } from './server/routes';
@@ -21,6 +23,8 @@ async function startServer() {
   app.use('/api/clients', clientsRouter);
   app.use('/api', ordersRouter);
   app.use('/api/payments', paymentsRouter);
+  app.use('/api/products', productsRouter);
+  app.use('/api/waves', wavesRouter);
   app.use(sheetsRouter);
   app.use(systemRouter);
 

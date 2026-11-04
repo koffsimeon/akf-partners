@@ -20,6 +20,7 @@ import {
   Clock,
   Sparkles,
   ArrowRight,
+  Plus,
 } from 'lucide-react';
 import { AuditLog, DiagnosticResult, SyncState, SystemConfig } from '../types';
 import { AkfCodeAiView } from './AkfCodeAiView';
@@ -36,6 +37,8 @@ interface SystemViewProps {
   onTriggerRecalculate: () => Promise<any>;
   onRunDiagnostic: () => Promise<DiagnosticResult>;
   onRefreshLogs?: () => Promise<void>;
+  onOpenWaveModal?: () => void;
+  onActivateWave?: (waveName: string) => Promise<void>;
 }
 
 export function SystemView({
@@ -47,6 +50,8 @@ export function SystemView({
   onTriggerRecalculate,
   onRunDiagnostic,
   onRefreshLogs,
+  onOpenWaveModal,
+  onActivateWave,
 }: SystemViewProps) {
   const [subTab, setSubTab] = useState<SystemSubTab>('DIAGNOSTIC');
   const [diagnosticResult, setDiagnosticResult] = useState<DiagnosticResult | null>(null);
@@ -515,9 +520,20 @@ export function SystemView({
 
             {/* Tableau dynamique des vagues depuis CONFIG_GRADES */}
             {config.waves && config.waves.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-slate-100">
-                <div className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                  Données réelles de l'onglet « CONFIG_GRADES »
+              <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Vagues & Paliers de Grades Configurés
+                  </div>
+                  {onOpenWaveModal && (
+                    <button
+                      onClick={onOpenWaveModal}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      <span>+ Nouvelle Vague</span>
+                    </button>
+                  )}
                 </div>
                 <div className="overflow-x-auto rounded-xl border border-slate-200">
                   <table className="min-w-full divide-y divide-slate-200 text-xs text-left">
@@ -531,6 +547,7 @@ export function SystemView({
                         <th className="py-2.5 px-3">Signature Cmd</th>
                         <th className="py-2.5 px-3">Signature CA</th>
                         <th className="py-2.5 px-3 text-center">Active</th>
+                        <th className="py-2.5 px-3 text-right">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 bg-white">
@@ -559,6 +576,16 @@ export function SystemView({
                               <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-200 text-slate-600">
                                 NON
                               </span>
+                            )}
+                          </td>
+                          <td className="py-2 px-3 text-right">
+                            {!w.active && onActivateWave && (
+                              <button
+                                onClick={() => onActivateWave(w.wave)}
+                                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 hover:underline cursor-pointer"
+                              >
+                                Activer
+                              </button>
                             )}
                           </td>
                         </tr>

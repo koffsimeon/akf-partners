@@ -3,6 +3,8 @@ export {
   ClientModal,
   OrderModal,
   PaymentModal,
+  ProductModal,
+  WaveModal,
 } from './modals';
 
 export type {
@@ -10,4 +12,6 @@ export type {
   ClientModalProps,
   OrderModalProps,
   PaymentModalProps,
+  ProductModalProps,
+  WaveModalProps,
 } from './modals';

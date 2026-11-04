@@ -9,3 +9,9 @@ export type { OrderModalProps } from './OrderModal';
 
 export { PaymentModal } from './PaymentModal';
 export type { PaymentModalProps } from './PaymentModal';
+
+export { ProductModal } from './ProductModal';
+export type { ProductModalProps } from './ProductModal';
+
+export { WaveModal } from './WaveModal';
+export type { WaveModalProps } from './WaveModal';

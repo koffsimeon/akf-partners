@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Users,
   UserCheck,
@@ -17,24 +17,27 @@ import {
   Eye,
   Pencil,
   X,
+  Package,
 } from 'lucide-react';
-import { Client, Order, Partner, Payment } from '../types';
+import { Client, Order, Partner, Payment, Product } from '../types';
 
-export type ManagementSubTab = 'PARTNERS' | 'CLIENTS' | 'ORDERS' | 'PAYMENTS';
+export type ManagementSubTab = 'PARTNERS' | 'CLIENTS' | 'ORDERS' | 'PAYMENTS' | 'PRODUCTS';
 
 interface ManagementViewProps {
   partners: Partner[];
   clients: Client[];
   orders: Order[];
   payments: Payment[];
+  products?: Product[];
   initialSubTab?: ManagementSubTab;
   filterId?: string | null;
-  onOpenCreate: (type: 'PARTNER' | 'CLIENT' | 'ORDER' | 'PAYMENT') => void;
+  onOpenCreate: (type: 'PARTNER' | 'CLIENT' | 'ORDER' | 'PAYMENT' | 'PRODUCT') => void;
   onSelectPartner: (partner: Partner) => void;
   onEditPartner?: (partner: Partner) => void;
   onSelectClient: (client: Client) => void;
   onSelectOrder: (order: Order) => void;
   onSelectPayment: (payment: Payment) => void;
+  onSelectProduct?: (product: Product) => void;
   onClearFilterId?: () => void;
 }
 
@@ -43,6 +46,7 @@ export function ManagementView({
   clients: rawClients,
   orders: rawOrders,
   payments: rawPayments,
+  products: rawProducts = [],
   initialSubTab = 'PARTNERS',
   filterId = null,
   onOpenCreate,
@@ -51,17 +55,20 @@ export function ManagementView({
   onSelectClient,
   onSelectOrder,
   onSelectPayment,
+  onSelectProduct,
   onClearFilterId,
 }: ManagementViewProps) {
   const partners = Array.isArray(rawPartners) ? rawPartners : [];
   const clients = Array.isArray(rawClients) ? rawClients : [];
   const orders = Array.isArray(rawOrders) ? rawOrders : [];
   const payments = Array.isArray(rawPayments) ? rawPayments : [];
+  const products = Array.isArray(rawProducts) ? rawProducts : [];
 
   const [subTab, setSubTab] = useState<ManagementSubTab>(initialSubTab);
   const [search, setSearch] = useState('');
   const [rankFilter, setRankFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [orderStatusFunnel, setOrderStatusFunnel] = useState<string>('ALL');
 
   useEffect(() => {
     if (initialSubTab) {
@@ -108,7 +115,8 @@ export function ManagementView({
       (o.partnerCode && o.partnerCode.toLowerCase().includes(q));
     const matchRel =
       !filterId || o.partnerId === filterId || o.clientId === filterId || o.id === filterId;
-    return matchQuery && matchRel;
+    const matchStatus = orderStatusFunnel === 'ALL' || o.orderStatus === orderStatusFunnel;
+    return matchQuery && matchRel && matchStatus;
   });
 
   // Filtrage Paiements
@@ -124,6 +132,17 @@ export function ManagementView({
     return matchQuery && matchRel;
   });
 
+  // Filtrage Produits Dynamiques
+  const filteredProducts = products.filter((pr) => {
+    const q = search.toLowerCase();
+    return (
+      !q ||
+      pr.name.toLowerCase().includes(q) ||
+      pr.id.toLowerCase().includes(q) ||
+      (pr.category && pr.category.toLowerCase().includes(q))
+    );
+  });
+
   return (
     <div className="space-y-6 pb-12">
       {/* Header */}
@@ -133,7 +152,7 @@ export function ManagementView({
             Gestion des Entités AKF
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5 font-medium">
-            Administration des partenaires, clients, commandes et paiements
+            Administration des partenaires, clients, commandes, paiements et catalogue produits
           </p>
         </div>
 
@@ -193,6 +212,20 @@ export function ManagementView({
             <span>Paiements</span>
             <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${subTab === 'PAYMENTS' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
               {payments.length}
+            </span>
+          </button>
+          <button
+            onClick={() => setSubTab('PRODUCTS')}
+            className={`flex items-center gap-2 rounded-xl px-3.5 py-2 font-bold whitespace-nowrap transition-all cursor-pointer ${
+              subTab === 'PRODUCTS'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/70'
+            }`}
+          >
+            <Package className="h-4 w-4" />
+            <span>Produits</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${subTab === 'PRODUCTS' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
+              {products.length}
             </span>
           </button>
         </div>
@@ -303,6 +336,15 @@ export function ManagementView({
             >
               <Plus className="h-4 w-4" />
               <span>+ Émettre Paiement</span>
+            </button>
+          )}
+          {subTab === 'PRODUCTS' && (
+            <button
+              onClick={() => onOpenCreate('PRODUCT')}
+              className="w-full sm:w-auto flex items-center justify-center gap-1.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 px-4 py-2.5 text-xs font-bold text-white transition-all shadow-xs shadow-indigo-600/20 cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              <span>+ Nouveau Produit</span>
             </button>
           )}
         </div>
@@ -635,7 +677,38 @@ export function ManagementView({
 
       {/* 8.3 COMMANDES */}
       {subTab === 'ORDERS' && (
-        <div className="space-y-3">
+        <div className="space-y-4">
+          {/* Entonnoir de statut des commandes (Inspi capture 2) */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            {[
+              { id: 'ALL', label: 'Toutes les commandes', count: orders.length, color: 'bg-slate-900 text-white' },
+              { id: 'En attente', label: 'En attente', count: orders.filter((o) => o.orderStatus === 'En attente').length, color: 'bg-amber-100 text-amber-800' },
+              { id: 'Confirmée', label: 'Confirmées', count: orders.filter((o) => o.orderStatus === 'Confirmée').length, color: 'bg-blue-100 text-blue-800' },
+              { id: 'Livrée', label: 'Livrées', count: orders.filter((o) => o.orderStatus === 'Livrée').length, color: 'bg-teal-100 text-teal-800' },
+              { id: 'Terminée', label: 'Terminées', count: orders.filter((o) => o.orderStatus === 'Terminée').length, color: 'bg-emerald-100 text-emerald-800' },
+              { id: 'Annulée', label: 'Annulées', count: orders.filter((o) => o.orderStatus === 'Annulée').length, color: 'bg-rose-100 text-rose-800' },
+            ].map((pill) => (
+              <button
+                key={pill.id}
+                onClick={() => setOrderStatusFunnel(pill.id)}
+                className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+                  orderStatusFunnel === pill.id
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'bg-white border border-slate-200/80 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <span>{pill.label}</span>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                    orderStatusFunnel === pill.id ? 'bg-white/20 text-white' : pill.color
+                  }`}
+                >
+                  {pill.count}
+                </span>
+              </button>
+            ))}
+          </div>
+
           {/* Desktop Table */}
           <div className="hidden md:block overflow-x-auto rounded-3xl border border-slate-200/80 bg-white shadow-2xs">
             <table className="w-full text-left border-collapse text-xs">
@@ -881,6 +954,142 @@ export function ManagementView({
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* 8.5 PRODUITS DU CATALOGUE DYNAMIQUE */}
+      {subTab === 'PRODUCTS' && (
+        <div className="space-y-3">
+          {/* Desktop Table */}
+          <div className="hidden md:block overflow-x-auto rounded-3xl border border-slate-200/80 bg-white shadow-2xs">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50/60 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                  <th className="py-4 px-5">ID & Nom</th>
+                  <th className="py-4 px-4">Catégorie</th>
+                  <th className="py-4 px-4 text-right">Prix Unitaire</th>
+                  <th className="py-4 px-4">Mode Calcul</th>
+                  <th className="py-4 px-4 text-center">Neo</th>
+                  <th className="py-4 px-4 text-center">Ambassador</th>
+                  <th className="py-4 px-4 text-center">Excellence</th>
+                  <th className="py-4 px-4 text-center">Signature</th>
+                  <th className="py-4 px-5 text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100/80 font-medium text-slate-700">
+                {filteredProducts.map((pr) => {
+                  const isPremium = pr.category === 'PREMIUM' || pr.isPremium;
+                  const isForfait = pr.commissionType === 'Forfaitaire';
+                  const unit = isForfait ? ' F' : '%';
+
+                  return (
+                    <tr
+                      key={pr.id}
+                      className="hover:bg-slate-50/70 transition-colors cursor-pointer"
+                      onClick={() => onSelectProduct?.(pr)}
+                    >
+                      <td className="py-3.5 px-5">
+                        <div className="font-bold text-slate-900">{pr.name}</div>
+                        <div className="text-[10px] text-slate-400 font-mono">{pr.id}</div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span
+                          className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                            isPremium
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-emerald-100 text-emerald-800'
+                          }`}
+                        >
+                          {pr.category || (isPremium ? 'PREMIUM' : 'RÉCURRENT')}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-right font-extrabold text-slate-900 font-mono">
+                        {pr.price.toLocaleString('fr-FR')} FCFA
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className="font-semibold text-slate-700">
+                          {isForfait ? 'Forfaitaire / unité' : 'Pourcentage (%)'}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-center font-bold text-slate-700 font-mono">
+                        {pr.commissionNeo ?? '-'}{unit}
+                      </td>
+                      <td className="py-3.5 px-4 text-center font-bold text-blue-700 font-mono">
+                        {pr.commissionAmbassador ?? '-'}{unit}
+                      </td>
+                      <td className="py-3.5 px-4 text-center font-bold text-purple-700 font-mono">
+                        {pr.commissionExcellence ?? '-'}{unit}
+                      </td>
+                      <td className="py-3.5 px-4 text-center font-bold text-amber-700 font-mono">
+                        {pr.commissionSignature ?? '-'}{unit}
+                      </td>
+                      <td className="py-3.5 px-5 text-center">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectProduct?.(pr);
+                          }}
+                          className="rounded-xl bg-slate-100 p-2 text-slate-600 hover:bg-slate-200 cursor-pointer transition-colors"
+                          title="Modifier le produit"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Cards */}
+          <div className="md:hidden space-y-3">
+            {filteredProducts.map((pr) => {
+              const isPremium = pr.category === 'PREMIUM' || pr.isPremium;
+              const isForfait = pr.commissionType === 'Forfaitaire';
+              const unit = isForfait ? ' F' : '%';
+
+              return (
+                <div
+                  key={pr.id}
+                  onClick={() => onSelectProduct?.(pr)}
+                  className="rounded-3xl border border-slate-200/80 bg-white p-4 shadow-2xs space-y-2.5 cursor-pointer"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <span className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-lg">
+                        {pr.id}
+                      </span>
+                      <h3 className="font-bold text-slate-900 mt-1">{pr.name}</h3>
+                      <p className="text-xs font-bold text-indigo-700 font-mono mt-0.5">
+                        {pr.price.toLocaleString('fr-FR')} FCFA
+                      </p>
+                    </div>
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        isPremium ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                      }`}
+                    >
+                      {pr.category}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] border-t border-slate-100 pt-2 text-slate-600">
+                    <span>Commissions : Neo {pr.commissionNeo}{unit} • Amb. {pr.commissionAmbassador}{unit}</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectProduct?.(pr);
+                      }}
+                      className="text-xs font-bold text-indigo-600"
+                    >
+                      Modifier
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

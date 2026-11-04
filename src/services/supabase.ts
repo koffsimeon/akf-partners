@@ -1,11 +1,9 @@
 import { createClient, SupabaseClient, User, Session } from '@supabase/supabase-js';
 
-// Récupération sécurisée depuis le fichier .env (variables Vite VITE_*)
-const supabaseUrl =
-  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SUPABASE_URL) || '';
-
-const supabaseAnonKey =
-  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SUPABASE_ANON_KEY) || '';
+// Récupération unifiée depuis le fichier .env (directement via SUPABASE_* ou VITE_SUPABASE_*)
+const env = (typeof import.meta !== 'undefined' ? (import.meta as any).env : {}) || {};
+const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY || '';
 
 export let supabaseClient: SupabaseClient | null = null;
 

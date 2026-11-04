@@ -103,7 +103,7 @@ export const EXPECTED_SHEETS_CONFIG: Record<string, string[]> = {
     'Ancienne Valeur',
     'Nouvelle Valeur',
   ],
-  '📱 MOBILE': [
+  'MOBILE': [
     'PANNEAU DE COMMANDE | COCHER POUR LANCER',
     'Initialiser le système',
     'Recalculer tout',

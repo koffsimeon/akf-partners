@@ -55,7 +55,7 @@ export function Navigation({
 
   const navItems = [
     { id: 'ACCUEIL', label: 'Accueil', icon: Home, badge: null },
-    { id: 'EXPRESS', label: 'Express 📱', icon: Smartphone, badge: null },
+    { id: 'EXPRESS', label: 'Express', icon: Smartphone, badge: null },
     { id: 'GESTION', label: 'Gestion', icon: FolderKanban, badge: null },
     { id: 'ANALYSE', label: 'Analyse', icon: BarChart3, badge: null },
     {

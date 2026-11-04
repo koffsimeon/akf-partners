@@ -228,7 +228,7 @@ export class GoogleSheetsService {
       const rows = batchData[expectedTitle] || [];
 
       // Traitement spécifique et officiel pour l'onglet '📱 MOBILE' (Panneau de commande non-tabulaire)
-      if (expectedTitle === '📱 MOBILE') {
+      if (expectedTitle === 'MOBILE') {
         const mobileValidation = validateMobileTabStructure(rows);
         const headerValid = found && mobileValidation.isValid;
 

@@ -375,7 +375,7 @@ export class MockSheetsRepository implements ISheetsRepository {
 
   public async inspect(): Promise<SheetsInspectionResult | null> {
     const tabs = Object.entries(EXPECTED_SHEETS_CONFIG).map(([name, headers]) => {
-      const isMobile = name === '📱 MOBILE';
+      const isMobile = name === 'MOBILE';
       return {
         name,
         found: true,

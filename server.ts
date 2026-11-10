@@ -1,32 +1,10 @@
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
-import {
-  partnersRouter,
-  clientsRouter,
-  ordersRouter,
-  paymentsRouter,
-  productsRouter,
-  wavesRouter,
-  sheetsRouter,
-  systemRouter,
-} from './server/routes';
+import { app } from './server/app';
 
 async function startServer() {
-  const app = express();
   const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
-
-  app.use(express.json());
-
-  // --- API ROUTERS ---
-  app.use('/api/partners', partnersRouter);
-  app.use('/api/clients', clientsRouter);
-  app.use('/api', ordersRouter);
-  app.use('/api/payments', paymentsRouter);
-  app.use('/api/products', productsRouter);
-  app.use('/api/waves', wavesRouter);
-  app.use(sheetsRouter);
-  app.use(systemRouter);
 
   // --- VITE & STATIC SPA SERVE ---
   if (process.env.NODE_ENV !== 'production') {

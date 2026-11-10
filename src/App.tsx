@@ -129,6 +129,31 @@ export default function App() {
     setTimeout(() => setToast(null), 4000);
   };
 
+  /**
+   * Analyse sécurisée des réponses API pour éviter les plantages non-JSON (HTML 404/500)
+   */
+  const parseApiResponse = async <T = any,>(res: Response): Promise<T> => {
+    const text = await res.text();
+    let data: any = {};
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      if (!res.ok) {
+        if (res.status === 404) {
+          throw new Error("Point d'accès API introuvable (404). Vérifiez la configuration du serveur backend.");
+        }
+        throw new Error(`Erreur serveur (${res.status}) : ${text.slice(0, 100) || res.statusText}`);
+      }
+      throw new Error(`Format de réponse invalide reçu du serveur : ${text.slice(0, 80)}`);
+    }
+
+    if (!res.ok) {
+      throw new Error(data.error || data.message || `Erreur requête (${res.status})`);
+    }
+
+    return data;
+  };
+
   // Fetch all initial data
   const fetchData = useCallback(async () => {
     try {
@@ -138,7 +163,9 @@ export default function App() {
       const fetchSafeArray = async <T,>(url: string): Promise<T[]> => {
         try {
           const r = await fetch(url);
-          const data = await r.json();
+          if (!r.ok) return [];
+          const text = await r.text();
+          const data = text ? JSON.parse(text) : [];
           return Array.isArray(data) ? data : [];
         } catch {
           return [];
@@ -303,27 +330,35 @@ export default function App() {
 
   // Actions de création et modification
   const handleCreatePartner = async (formData: { fullName: string; phone: string; whatsapp?: string }) => {
-    const res = await fetch('/api/partners', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
-    showToast(`Partenaire ${data.code} créé avec succès !`);
-    await fetchData();
+    try {
+      const res = await fetch('/api/partners', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      const data = await parseApiResponse(res);
+      showToast(`Partenaire ${data.code} créé avec succès !`);
+      await fetchData();
+    } catch (err: any) {
+      showToast(err.message, 'error');
+      throw err;
+    }
   };
 
   const handleUpdatePartner = async (id: string, updates: Partial<Partner>) => {
-    const res = await fetch(`/api/partners/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updates),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
-    showToast(`Partenaire ${data.code} mis à jour avec succès !`);
-    await fetchData();
+    try {
+      const res = await fetch(`/api/partners/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      const data = await parseApiResponse(res);
+      showToast(`Partenaire ${data.code} mis à jour avec succès !`);
+      await fetchData();
+    } catch (err: any) {
+      showToast(err.message, 'error');
+      throw err;
+    }
   };
 
   const handleCreateClient = async (formData: {
@@ -332,15 +367,19 @@ export default function App() {
     whatsapp?: string;
     partnerId?: string;
   }) => {
-    const res = await fetch('/api/clients', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
-    showToast(`Client ${data.id} créé avec succès !`);
-    await fetchData();
+    try {
+      const res = await fetch('/api/clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      const data = await parseApiResponse(res);
+      showToast(`Client ${data.id} créé avec succès !`);
+      await fetchData();
+    } catch (err: any) {
+      showToast(err.message, 'error');
+      throw err;
+    }
   };
 
   const handleUpdateClient = async (clientId: string, updates: Partial<Client>) => {
@@ -350,8 +389,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      const data = await parseApiResponse(res);
       showToast(data.message || `Client ${clientId} mis à jour avec succès !`);
       await fetchData();
     } catch (err: any) {
@@ -365,8 +403,7 @@ export default function App() {
       const res = await fetch(`/api/clients/${clientId}`, {
         method: 'DELETE',
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      const data = await parseApiResponse(res);
       showToast(data.message || `Client ${clientId} supprimé avec succès !`);
       await fetchData();
     } catch (err: any) {
@@ -382,15 +419,19 @@ export default function App() {
     unitPrice?: number;
     date?: string;
   }) => {
-    const res = await fetch('/api/orders', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
-    showToast(`Commande ${data.id} enregistrée avec succès !`);
-    await fetchData();
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      const data = await parseApiResponse(res);
+      showToast(`Commande ${data.id} enregistrée avec succès !`);
+      await fetchData();
+    } catch (err: any) {
+      showToast(err.message, 'error');
+      throw err;
+    }
   };
 
   const handleDeleteOrder = async (orderId: string) => {
@@ -398,8 +439,7 @@ export default function App() {
       const res = await fetch(`/api/orders/${orderId}`, {
         method: 'DELETE',
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      const data = await parseApiResponse(res);
       showToast(data.message || `Commande ${orderId} supprimée avec succès !`);
       await fetchData();
     } catch (err: any) {
@@ -415,8 +455,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderStatus }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      const data = await parseApiResponse(res);
       showToast(data.message || `Statut de la commande ${orderId} mis à jour : ${orderStatus}`);
       await fetchData();
     } catch (err: any) {
@@ -430,8 +469,7 @@ export default function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      const data = await parseApiResponse(res);
       showToast(data.message || `Promotion confirmée avec succès !`);
       await fetchData();
     } catch (err: any) {
@@ -447,15 +485,19 @@ export default function App() {
     reference?: string;
     note?: string;
   }) => {
-    const res = await fetch('/api/payments', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
-    showToast(`Paiement ${data.id} de ${data.amount.toLocaleString()} FCFA confirmé !`);
-    await fetchData();
+    try {
+      const res = await fetch('/api/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      const data = await parseApiResponse(res);
+      showToast(`Paiement ${data.id} de ${data.amount.toLocaleString()} FCFA confirmé !`);
+      await fetchData();
+    } catch (err: any) {
+      showToast(err.message, 'error');
+      throw err;
+    }
   };
 
   const handleSaveProduct = async (productData: Product) => {
@@ -468,8 +510,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(productData),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      const data = await parseApiResponse(res);
       showToast(data.message || `Produit « ${data.product?.name || ''} » enregistré avec succès !`);
       await fetchData();
     } catch (err: any) {
@@ -483,8 +524,7 @@ export default function App() {
       const res = await fetch(`/api/products/${productId}`, {
         method: 'DELETE',
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      const data = await parseApiResponse(res);
       showToast(data.message || 'Produit retiré du catalogue avec succès.');
       await fetchData();
     } catch (err: any) {
@@ -500,8 +540,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(waveData),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      const data = await parseApiResponse(res);
       showToast(data.message || `Vague « ${waveData.wave} » configurée avec succès !`);
       await fetchData();
     } catch (err: any) {
@@ -515,8 +554,7 @@ export default function App() {
       const res = await fetch(`/api/waves/${encodeURIComponent(waveName)}/activate`, {
         method: 'POST',
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      const data = await parseApiResponse(res);
       showToast(data.message || `Vague ${waveName} activée avec succès !`);
       await fetchData();
     } catch (err: any) {

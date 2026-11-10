@@ -51,14 +51,18 @@ export class SupabaseRepository implements ISheetsRepository {
       const nextRank: Rank | null =
         rank === 'Neo' ? 'Ambassador' : rank === 'Ambassador' ? 'Excellence' : rank === 'Excellence' ? 'Signature' : null;
 
+      // Seuils officiels Vague 1 All Koff's Food
       const targetCaNextRank =
-        rank === 'Neo' ? 150000 : rank === 'Ambassador' ? 500000 : rank === 'Excellence' ? 1000000 : 0;
+        rank === 'Neo' ? 100000 : rank === 'Ambassador' ? 300000 : rank === 'Excellence' ? 800000 : 0;
 
       const targetCmdNextRank =
-        rank === 'Neo' ? 10 : rank === 'Ambassador' ? 25 : rank === 'Excellence' ? 50 : 0;
+        rank === 'Neo' ? 8 : rank === 'Ambassador' ? 20 : rank === 'Excellence' ? 50 : 0;
 
       const progressPct =
         targetCaNextRank > 0 ? Math.min(100, Math.round((ca / targetCaNextRank) * 100)) : 100;
+
+      const eligibleForPromotion =
+        targetCaNextRank > 0 && targetCmdNextRank > 0 && ca >= targetCaNextRank && orderCount >= targetCmdNextRank;
 
       return {
         id: row.id,
@@ -82,6 +86,7 @@ export class SupabaseRepository implements ISheetsRepository {
         nextRank,
         targetCaNextRank,
         targetCmdNextRank,
+        eligibleForPromotion,
       };
     });
   }

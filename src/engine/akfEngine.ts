@@ -16,6 +16,19 @@ import {
  * Centralise les règles de validation, calcul, normalisation et recalcul global.
  */
 
+export const INITIAL_CONFIG: SystemConfig = {
+  ranks: [
+    { name: 'Neo', minCa: 0, minOrders: 0, commissionRate: 0.06 },
+    { name: 'Ambassador', minCa: 100000, minOrders: 8, commissionRate: 0.08 },
+    { name: 'Excellence', minCa: 300000, minOrders: 20, commissionRate: 0.1 },
+    { name: 'Signature', minCa: 800000, minOrders: 50, commissionRate: 0.12 },
+  ],
+  maxPremiumOrdersForCommission: 3,
+  minimumPayment: 5000,
+  version: '1.0.0',
+  lastUpdated: new Date().toISOString(),
+};
+
 export function normalizePhone(rawPhone: string): { canonical: string; formatted: string } {
   if (!rawPhone) {
     return { canonical: '', formatted: '' };
@@ -32,13 +45,27 @@ export function normalizePhone(rawPhone: string): { canonical: string; formatted
   // Si le numéro commence par +229
   if (clean.startsWith('+229')) {
     const localPart = clean.slice(4);
+    if (localPart.length === 10) {
+      return {
+        canonical: '+229' + localPart,
+        formatted: `+229 ${localPart.slice(0, 2)} ${localPart.slice(2, 4)} ${localPart.slice(4, 6)} ${localPart.slice(6, 8)} ${localPart.slice(8)}`.trim(),
+      };
+    }
     return {
       canonical: '+229' + localPart,
       formatted: `+229 ${localPart.slice(0, 2)} ${localPart.slice(2, 4)} ${localPart.slice(4, 6)} ${localPart.slice(6)}`.trim(),
     };
   }
 
-  // Si le numéro fait 8 chiffres (format national Bénin typique : 97 12 34 56)
+  // Si le numéro fait 10 chiffres (nouveau plan national Bénin ARCEP : 01 97 12 34 56)
+  if (/^\d{10}$/.test(clean)) {
+    return {
+      canonical: '+229' + clean,
+      formatted: `+229 ${clean.slice(0, 2)} ${clean.slice(2, 4)} ${clean.slice(4, 6)} ${clean.slice(6, 8)} ${clean.slice(8)}`,
+    };
+  }
+
+  // Si le numéro fait 8 chiffres (ancien format national Bénin : 97 12 34 56)
   if (/^\d{8}$/.test(clean)) {
     return {
       canonical: '+229' + clean,

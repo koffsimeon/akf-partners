@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Navigation,
   TabType,
@@ -20,18 +20,13 @@ import { PartnerQuickMobileView } from './components/PartnerQuickMobileView';
 import { AuthView } from './components/auth/AuthView';
 import {
   Client,
-  DataSourceMode,
   Order,
   Partner,
   Payment,
   Product,
-  SyncState,
-  SystemConfig,
-  AuditLog,
-  DiagnosticResult,
   WaveConfig,
 } from './types';
-import { RefreshCw, CheckCircle2, AlertCircle, X } from 'lucide-react';
+import { RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
 import { User } from '@supabase/supabase-js';
 import {
   getSupabaseSession,
@@ -40,50 +35,57 @@ import {
   signOutSupabase,
   UserProfile,
 } from './services/supabase';
+import { useAkfData } from './hooks/useAkfData';
 
 export default function App() {
   const [sessionUser, setSessionUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [authChecking, setAuthChecking] = useState<boolean>(true);
-
   const [currentTab, setCurrentTab] = useState<TabType>('ACCUEIL');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Entities State
-  const [partners, setPartners] = useState<Partner[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [config, setConfig] = useState<SystemConfig>({
-    ranks: [
-      { name: 'Neo', minCa: 0, minOrders: 0, commissionRate: 0.06 },
-      { name: 'Ambassador', minCa: 100000, minOrders: 8, commissionRate: 0.08 },
-      { name: 'Excellence', minCa: 300000, minOrders: 20, commissionRate: 0.1 },
-      { name: 'Signature', minCa: 800000, minOrders: 50, commissionRate: 0.12 },
-    ],
-    maxPremiumOrdersForCommission: 3,
-    minimumPayment: 5000,
-    version: '1.0.0',
-    lastUpdated: new Date().toISOString(),
-  });
-  const [syncState, setSyncState] = useState<SyncState>({
-    status: 'SYNCHRONISE',
-    lastSync: new Date().toISOString(),
-    pendingCount: 0,
-    errorCount: 0,
-  });
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [dataSourceMode, setDataSourceMode] = useState<DataSourceMode>('SHEETS_LIVE');
 
   // Relational Navigation & Sub-views
   const [managementSubTab, setManagementSubTab] = useState<ManagementSubTab>('PARTNERS');
   const [managementFilterId, setManagementFilterId] = useState<string | null>(null);
   const [searchInitialQuery, setSearchInitialQuery] = useState('');
 
-  // Modals
+  // Hook modulaire de gestion des données (Clean Architecture)
+  const {
+    loading,
+    error,
+    toast,
+    showToast,
+    partners,
+    clients,
+    orders,
+    payments,
+    products,
+    config,
+    syncState,
+    auditLogs,
+    isSyncing,
+    dataSourceMode,
+    fetchData,
+    handleSyncNow,
+    handleRecalculate,
+    handleRefreshLogs,
+    handleRunDiagnostic,
+    handleCreatePartner,
+    handleUpdatePartner,
+    handleCreateClient,
+    handleUpdateClient,
+    handleDeleteClient,
+    handleCreateOrder,
+    handleDeleteOrder,
+    handleUpdateOrderStatus,
+    handlePromotePartner,
+    handleCreatePayment,
+    handleSaveProduct,
+    handleDeleteProduct,
+    handleSaveWave,
+    handleActivateWave,
+  } = useAkfData();
+
+  // Modals state
   const [partnerModal, setPartnerModal] = useState<{
     isOpen: boolean;
     mode: 'view' | 'create' | 'edit';
@@ -120,75 +122,6 @@ export default function App() {
     mode: 'create' | 'edit';
     wave?: WaveConfig | null;
   }>({ isOpen: false, mode: 'create' });
-
-  // Notification Toast
-  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-
-  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 4000);
-  };
-
-  // Fetch all initial data
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const fetchSafeArray = async <T,>(url: string): Promise<T[]> => {
-        try {
-          const r = await fetch(url);
-          const data = await r.json();
-          return Array.isArray(data) ? data : [];
-        } catch {
-          return [];
-        }
-      };
-
-      const [
-        partnersRes,
-        clientsRes,
-        ordersRes,
-        paymentsRes,
-        productsRes,
-        configRes,
-        syncRes,
-        logsRes,
-        sheetsStatusRes,
-      ] = await Promise.all([
-        fetchSafeArray<Partner>('/api/partners'),
-        fetchSafeArray<Client>('/api/clients'),
-        fetchSafeArray<Order>('/api/orders'),
-        fetchSafeArray<Payment>('/api/payments'),
-        fetchSafeArray<Product>('/api/products'),
-        fetch('/api/config').then((r) => (r.ok ? r.json() : null)).catch(() => null),
-        fetch('/api/sync-state').then((r) => (r.ok ? r.json() : null)).catch(() => null),
-        fetchSafeArray<AuditLog>('/api/logs'),
-        fetch('/api/sheets/status').then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      ]);
-
-      setPartners(partnersRes);
-      setClients(clientsRes);
-      setOrders(ordersRes);
-      setPayments(paymentsRes);
-      setProducts(productsRes);
-      if (configRes && typeof configRes === 'object' && !configRes.error) {
-        setConfig(configRes);
-      }
-      if (syncRes && typeof syncRes === 'object' && !syncRes.error) {
-        setSyncState(syncRes);
-      }
-      setAuditLogs(logsRes);
-      if (sheetsStatusRes && sheetsStatusRes.mode) {
-        setDataSourceMode(sheetsStatusRes.mode);
-      }
-    } catch (err: any) {
-      console.error('Failed to load initial data:', err);
-      setError('Impossible de joindre le serveur AKF. Vérifiez votre connexion.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
   // Cycle de vie de l'authentification Supabase (Gatekeeper)
   useEffect(() => {
@@ -246,286 +179,13 @@ export default function App() {
       await signOutSupabase();
       setSessionUser(null);
       setUserProfile(null);
-      setPartners([]);
-      setClients([]);
-      setOrders([]);
-      setPayments([]);
-      setProducts([]);
       showToast('Session fermée avec succès. Cockpit verrouillé.');
     } catch (err: any) {
       showToast(err.message || 'Erreur lors de la déconnexion', 'error');
     }
   };
 
-  // Synchronisation
-  const handleSyncNow = async () => {
-    try {
-      setIsSyncing(true);
-      const res = await fetch('/api/sync', { method: 'POST' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erreur lors de la synchronisation');
-      setSyncState(data.syncState);
-      showToast('Synchronisation avec Google Sheets effectuée.');
-      fetchData();
-    } catch (err: any) {
-      showToast(err.message || 'Erreur synchronisation', 'error');
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  // Recalcul Global
-  const handleRecalculate = async () => {
-    const res = await fetch('/api/recalculate', { method: 'POST' });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Erreur lors du recalcul');
-    await fetchData();
-    showToast(`Recalcul terminé : ${data.itemsCorrected} éléments ajustés.`);
-    return data;
-  };
-
-  // Actualisation ciblée des journaux d'audit (sans rechargement global ni démontage d'écran)
-  const handleRefreshLogs = useCallback(async () => {
-    try {
-      const logsRes = await fetch('/api/logs').then((r) => r.json());
-      setAuditLogs(logsRes);
-    } catch (err) {
-      console.error('Échec de rafraîchissement des journaux d’audit:', err);
-    }
-  }, []);
-
-  // Diagnostic
-  const handleRunDiagnostic = async (): Promise<DiagnosticResult> => {
-    const res = await fetch('/api/diagnostic');
-    const data = await res.json();
-    return data;
-  };
-
-  // Actions de création et modification
-  const handleCreatePartner = async (formData: { fullName: string; phone: string; whatsapp?: string }) => {
-    const res = await fetch('/api/partners', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
-    showToast(`Partenaire ${data.code} créé avec succès !`);
-    await fetchData();
-  };
-
-  const handleUpdatePartner = async (id: string, updates: Partial<Partner>) => {
-    const res = await fetch(`/api/partners/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updates),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
-    showToast(`Partenaire ${data.code} mis à jour avec succès !`);
-    await fetchData();
-  };
-
-  const handleCreateClient = async (formData: {
-    fullName: string;
-    phone: string;
-    whatsapp?: string;
-    partnerId?: string;
-  }) => {
-    const res = await fetch('/api/clients', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
-    showToast(`Client ${data.id} créé avec succès !`);
-    await fetchData();
-  };
-
-  const handleUpdateClient = async (clientId: string, updates: Partial<Client>) => {
-    try {
-      const res = await fetch(`/api/clients/${clientId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      showToast(data.message || `Client ${clientId} mis à jour avec succès !`);
-      await fetchData();
-    } catch (err: any) {
-      showToast(err.message, 'error');
-      throw err;
-    }
-  };
-
-  const handleDeleteClient = async (clientId: string) => {
-    try {
-      const res = await fetch(`/api/clients/${clientId}`, {
-        method: 'DELETE',
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      showToast(data.message || `Client ${clientId} supprimé avec succès !`);
-      await fetchData();
-    } catch (err: any) {
-      showToast(err.message, 'error');
-      throw err;
-    }
-  };
-
-  const handleCreateOrder = async (formData: {
-    clientId: string;
-    productId: string;
-    quantity: number;
-    unitPrice?: number;
-    date?: string;
-  }) => {
-    const res = await fetch('/api/orders', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
-    showToast(`Commande ${data.id} enregistrée avec succès !`);
-    await fetchData();
-  };
-
-  const handleDeleteOrder = async (orderId: string) => {
-    try {
-      const res = await fetch(`/api/orders/${orderId}`, {
-        method: 'DELETE',
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      showToast(data.message || `Commande ${orderId} supprimée avec succès !`);
-      await fetchData();
-    } catch (err: any) {
-      showToast(err.message, 'error');
-      throw err;
-    }
-  };
-
-  const handleUpdateOrderStatus = async (orderId: string, orderStatus: string) => {
-    try {
-      const res = await fetch(`/api/orders/${orderId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderStatus }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      showToast(data.message || `Statut de la commande ${orderId} mis à jour : ${orderStatus}`);
-      await fetchData();
-    } catch (err: any) {
-      showToast(err.message, 'error');
-    }
-  };
-
-  const handlePromotePartner = async (partnerId: string) => {
-    try {
-      const res = await fetch(`/api/partners/${partnerId}/promote`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      showToast(data.message || `Promotion confirmée avec succès !`);
-      await fetchData();
-    } catch (err: any) {
-      showToast(err.message, 'error');
-    }
-  };
-
-  const handleCreatePayment = async (formData: {
-    partnerId: string;
-    amount: number;
-    date?: string;
-    paymentMethod: any;
-    reference?: string;
-    note?: string;
-  }) => {
-    const res = await fetch('/api/payments', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
-    showToast(`Paiement ${data.id} de ${data.amount.toLocaleString()} FCFA confirmé !`);
-    await fetchData();
-  };
-
-  const handleSaveProduct = async (productData: Product) => {
-    try {
-      const isEdit = Boolean(productData.id);
-      const url = isEdit ? `/api/products/${productData.id}` : '/api/products';
-      const method = isEdit ? 'PUT' : 'POST';
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(productData),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      showToast(data.message || `Produit « ${data.product?.name || ''} » enregistré avec succès !`);
-      await fetchData();
-    } catch (err: any) {
-      showToast(err.message, 'error');
-      throw err;
-    }
-  };
-
-  const handleDeleteProduct = async (productId: string) => {
-    try {
-      const res = await fetch(`/api/products/${productId}`, {
-        method: 'DELETE',
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      showToast(data.message || 'Produit retiré du catalogue avec succès.');
-      await fetchData();
-    } catch (err: any) {
-      showToast(err.message, 'error');
-      throw err;
-    }
-  };
-
-  const handleSaveWave = async (waveData: WaveConfig) => {
-    try {
-      const res = await fetch('/api/waves', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(waveData),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      showToast(data.message || `Vague « ${waveData.wave} » configurée avec succès !`);
-      await fetchData();
-    } catch (err: any) {
-      showToast(err.message, 'error');
-      throw err;
-    }
-  };
-
-  const handleActivateWave = async (waveName: string) => {
-    try {
-      const res = await fetch(`/api/waves/${encodeURIComponent(waveName)}/activate`, {
-        method: 'POST',
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      showToast(data.message || `Vague ${waveName} activée avec succès !`);
-      await fetchData();
-    } catch (err: any) {
-      showToast(err.message, 'error');
-      throw err;
-    }
-  };
-
-  // Relational jumps
+  // Sauts relationnels
   const handleNavigateFromModal = (
     type: 'PARTNER' | 'CLIENT' | 'ORDER' | 'PAYMENT',
     filterId: string
@@ -618,7 +278,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Navigation Header & Sidebar / Bottom bar */}
+      {/* Navigation Header & Sidebar / Drawer */}
       <Navigation
         currentTab={currentTab}
         onSelectTab={(tab) => {
@@ -653,7 +313,7 @@ export default function App() {
             <p className="text-xs text-red-700 mt-1">{error}</p>
             <button
               onClick={fetchData}
-              className="mt-4 rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-700"
+              className="mt-4 rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-700 cursor-pointer"
             >
               Réessayer
             </button>
@@ -768,6 +428,7 @@ export default function App() {
                 }
                 onSelectPartnerFull={(p) => setPartnerModal({ isOpen: true, mode: 'view', partner: p })}
                 onSelectOrder={(o) => setOrderModal({ isOpen: true, mode: 'view', order: o })}
+                onOpenCreatePartner={() => setPartnerModal({ isOpen: true, mode: 'create', partner: null })}
               />
             )}
           </>

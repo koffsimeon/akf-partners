@@ -151,7 +151,7 @@ export class SwitchableSheetsRepository implements ISheetsRepository {
     if (isSupabaseConfigured()) {
       return this.supabaseRepo;
     }
-    if (this.currentMode === 'MOCK') {
+    if (this.currentMode === 'MOCK' || !this.googleRepo.getSpreadsheetId()) {
       return this.mockRepo;
     }
     return this.googleRepo;

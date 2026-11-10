@@ -65,7 +65,7 @@ partnersRouter.post('/', async (req: Request, res: Response) => {
 
     // 4. Attribuer valeurs initiales
     const config = await sheetsRepo.getConfig();
-    const activeWave = config.waves.find((w) => w.active)?.wave || 'Vague 1';
+    const activeWave = config?.waves?.find((w) => w.active)?.wave || 'Vague 1';
 
     const newPartner: Partner = {
       id: newId,

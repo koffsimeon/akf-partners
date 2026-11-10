@@ -12,6 +12,7 @@ import {
   Sparkles,
   Wallet,
   AlertCircle,
+  Plus,
 } from 'lucide-react';
 import { Partner, Order, Payment, Client, SystemConfig } from '../types';
 import { getRankProgression } from '../engine/akfEngine';
@@ -25,6 +26,7 @@ interface PartnerQuickMobileViewProps {
   onInitiatePayment: (partner: Partner) => void;
   onSelectPartnerFull: (partner: Partner) => void;
   onSelectOrder?: (order: Order) => void;
+  onOpenCreatePartner?: () => void;
 }
 
 export function PartnerQuickMobileView({
@@ -36,6 +38,7 @@ export function PartnerQuickMobileView({
   onInitiatePayment,
   onSelectPartnerFull,
   onSelectOrder,
+  onOpenCreatePartner,
 }: PartnerQuickMobileViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPartnerId, setSelectedPartnerId] = useState<string>(
@@ -84,8 +87,8 @@ export function PartnerQuickMobileView({
   const progression = useMemo(() => {
     if (!activePartner) return null;
     return getRankProgression(
-      activePartner.totalSales,
-      activePartner.validatedOrders,
+      activePartner.ca || 0,
+      activePartner.orderCount || 0,
       activePartner.rank,
       config
     );
@@ -298,33 +301,33 @@ export function PartnerQuickMobileView({
                   <div className="flex items-center gap-1.5">
                     <Award className="h-4 w-4 text-indigo-600" />
                     <span>
-                      {progression.isMaxRank
+                      {!progression.nextRank
                         ? 'Grade Sommet Atteint'
                         : `Objectif : Grade ${progression.nextRank}`}
                     </span>
                   </div>
                   <span className="font-extrabold text-indigo-600">
-                    {progression.progressPercent}%
+                    {progression.progressPct}%
                   </span>
                 </div>
 
                 <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
                   <div
                     className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 transition-all duration-500"
-                    style={{ width: `${progression.progressPercent}%` }}
+                    style={{ width: `${progression.progressPct}%` }}
                   />
                 </div>
 
-                {!progression.isMaxRank && (
+                {progression.nextRank && (
                   <div className="flex items-center justify-between text-[11px] text-slate-500">
                     <span>
-                      Commandes : <strong className="text-slate-800">{activePartner.validatedOrders}</strong> /{' '}
+                      Commandes : <strong className="text-slate-800">{activePartner.orderCount || 0}</strong> /{' '}
                       {progression.targetCmd}
                     </span>
                     <span>
                       C.A. :{' '}
                       <strong className="text-slate-800">
-                        {activePartner.totalSales.toLocaleString('fr-FR')}
+                        {(activePartner.ca || 0).toLocaleString('fr-FR')}
                       </strong>{' '}
                       / {progression.targetCa.toLocaleString('fr-FR')} F
                     </span>
@@ -375,7 +378,7 @@ export function PartnerQuickMobileView({
                 Commandes Apportées
               </span>
               <div className="text-xl font-black text-slate-900 mt-1">
-                {activePartner.validatedOrders}
+                {activePartner.orderCount || 0}
               </div>
               <p className="text-[11px] text-slate-500 mt-0.5">
                 Sur {partnerOrders.length} enregistrées
@@ -387,7 +390,7 @@ export function PartnerQuickMobileView({
                 Chiffre d’Affaires
               </span>
               <div className="text-xl font-black text-slate-900 mt-1">
-                {activePartner.totalSales.toLocaleString('fr-FR')}{' '}
+                {(activePartner.ca || 0).toLocaleString('fr-FR')}{' '}
                 <span className="text-[10px] text-slate-400">F</span>
               </div>
               <p className="text-[11px] text-slate-500 mt-0.5">
@@ -480,12 +483,21 @@ export function PartnerQuickMobileView({
           </div>
         </div>
       ) : (
-        <div className="rounded-3xl bg-white p-8 text-center border border-slate-200 space-y-2">
+        <div className="rounded-3xl bg-white p-8 text-center border border-slate-200 space-y-3">
           <AlertCircle className="h-8 w-8 text-slate-400 mx-auto" />
           <h3 className="text-sm font-bold text-slate-800">Aucun partenaire disponible</h3>
           <p className="text-xs text-slate-500">
-            Créez un partenaire ou vérifiez votre synchronisation.
+            Créez votre premier partenaire pour démarrer le suivi d'activité.
           </p>
+          {onOpenCreatePartner && (
+            <button
+              onClick={onOpenCreatePartner}
+              className="mt-2 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Nouveau Partenaire</span>
+            </button>
+          )}
         </div>
       )}
     </div>
